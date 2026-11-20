@@ -1,0 +1,785 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>V2.9.2 完整源码逐模块人工审计</title><style>
+:root{--bg:#f3f6fc;--paper:#fff;--ink:#15223b;--muted:#63718b;--border:#dbe4f2;--blue:#1b54b8}*{box-sizing:border-box}
+body{font:15px/1.64 system-ui,-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--ink);margin:0}
+header{background:#fff;border-bottom:1px solid var(--border);padding:24px max(24px,calc((100vw - 1340px)/2))}
+main{max-width:1340px;margin:24px auto;padding:0 22px 80px}h1{margin:0 0 7px;font-size:28px}h2{font-size:22px;margin:0 0 14px}h3{margin:14px 0 4px;font-size:15px}p{margin:6px 0}.muted{color:var(--muted)}
+.card{padding:20px 24px;border:1px solid var(--border);background:var(--paper);border-radius:14px;margin:14px 0}
+nav{columns:3;column-gap:28px}.toc{break-inside:avoid;margin:4px 0;font-size:13px}a{color:var(--blue)}a:hover{text-decoration:underline}
+.meta{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px}.code{background:#0e1729;color:#e5eeff;border-radius:10px;padding:14px;max-height:630px;overflow:auto;white-space:pre;line-height:1.55;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2}
+.ln{color:#8494aa;user-select:none;padding-right:16px;display:inline-block;min-width:52px;text-align:right}
+.tip{border-left:3px solid #95b7f3;padding:7px 11px;background:#f5f8ff;margin:8px 0}.issue{border-left:3px solid #d19d36;padding:7px 11px;background:#fffaee;margin:8px 0}
+details{border:1px solid #dce6f3;border-radius:10px;margin-top:10px;background:#fff}summary{padding:12px 14px;cursor:pointer;font-weight:700}details .code{margin:0;border-radius:0 0 9px 9px;max-height:none} .funcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:6px 15px;padding:5px 0}.func{border-bottom:1px solid #eef2f8;padding:5px 0;font-size:13px}.func code{color:#144ba7;font-size:12px}
+small{color:var(--muted)}@media(max-width:760px){nav{columns:1}.funcs{grid-template-columns:1fr}main{padding:0 10px 60px}.card{padding:14px}.code{font-size:11px}}@media print{body{background:#fff}.card{break-inside:avoid}details .code{max-height:none}}
+</style></head><body><header><h1>V2.9.2 · 完整源码逐模块人工审计</h1><p>以用户本次上传的 HTML 为唯一源文件。全部 790 行逐字引用，按功能分为 18 块。</p><div class="meta"><span>源码行数：790</span><span>UTF-8 字节：96510</span><span>SHA-256：28d8204ff37b6a0247d877618af904c9689c9c4b559a32824abbed4aa5731324</span></div><p><small>审计报告不改变工具源代码。内容为静态代码解读，不是形式化证明或生产安全认证。</small></p></header><main><section class="card"><h2>目录</h2><nav><p class="toc"><a href="#s1">01. 文件外壳与 CSS</a> <small>(1–105)</small></p><p class="toc"><a href="#s106">02. HTML 界面与操作入口</a> <small>(106–158)</small></p><p class="toc"><a href="#s159">03. 数据模型、文本切割与坐标生成</a> <small>(159–185)</small></p><p class="toc"><a href="#s186">04. 状态快照、撤销重做与重新生成</a> <small>(186–205)</small></p><p class="toc"><a href="#s206">05. 编码端坐标选择与可视化</a> <small>(206–215)</small></p><p class="toc"><a href="#s216">06. 编码路径集合、路径编辑与显示</a> <small>(216–260)</small></p><p class="toc"><a href="#s261">07. 编码画布绘图与文件复制</a> <small>(261–294)</small></p><p class="toc"><a href="#s295">08. 编码导出、摘要与工程兼容</a> <small>(295–315)</small></p><p class="toc"><a href="#s316">09. 重建模式初始化和界面折叠</a> <small>(316–355)</small></p><p class="toc"><a href="#s356">10. 重建模式数据结构与文件匹配算法</a> <small>(356–385)</small></p><p class="toc"><a href="#s386">11. 共享节点回填与四项坐标重建</a> <small>(386–445)</small></p><p class="toc"><a href="#s446">12. 重建片段组、路径和编辑状态</a> <small>(446–533)</small></p><p class="toc"><a href="#s534">13. 重建画布的 DOM 渲染</a> <small>(534–579)</small></p><p class="toc"><a href="#s580">14. 重建路径绘图与指针交互</a> <small>(580–636)</small></p><p class="toc"><a href="#s637">15. 执行本段文件匹配</a> <small>(637–654)</small></p><p class="toc"><a href="#s655">16. 片段 UI、按钮绑定与保存折叠</a> <small>(655–718)</small></p><p class="toc"><a href="#s719">17. 工作进度导出与导入</a> <small>(719–766)</small></p><p class="toc"><a href="#s767">18. 外部 TXT 数据导入及启动绑定</a> <small>(767–790)</small></p></nav></section><section class="card"><h2>跨模块重要发现</h2><div class="issue"><strong>F-01 · 匹配失败显示旧结果</strong><p>第 637–654 行：catch 仅展示错误，未同步清空旧 UI 结果；v25Invalidate 第 432 行仅清空 seg.results。</p><small>问题已由源码直接支持。</small></div><div class="issue"><strong>F-02 · 坐标分界依赖最后两位</strong><p>编码 codeFor 第 179 行和重建 v25GroupCodes 第 418 行；字符位置达到三位数时产生不同分段。</p><small>需区分短字符范围和长字符范围。</small></div><div class="issue"><strong>F-03 · 进度导入继承成功标签</strong><p>第 756–761 行接受 s.status，同时显式清空 seg.results 与 pathCheck。</p><small>导入的结果状态不等于重新验证通过。</small></div><div class="issue"><strong>F-04 · 参考文本/导入文件变化后的旧结果</strong><p>参考变更仅更新字数（第 775、781 行）；本地文件导入只更新 v23.importEntries（第 767–773 行）。</p><small>会影响已展示匹配结果的时效性。</small></div><div class="issue"><strong>S-01 · 源码包含未使用的密码辅助函数</strong><p>第 322–330 行；不存在向导出接口调用 v23DerivePassword 的路径。</p><small>辅助函数存在不等于加密功能生效。</small></div><div class="issue"><strong>S-02 · 导出 JSON 中包含足以重建的关系信息</strong><p>第 295、303–305、719–725 行。</p><small>文件格式并非全都不含目标线索。</small></div></section><section class="card" id="s1"><h2>文件外壳与 CSS</h2><p class="muted">原文件第 1–105 行，105 行；区块 01 / 18</p><h3>职责</h3><p>浏览器页面、字体、容器、按钮、画布、节点、连线、恢复区视觉样式。</p><h3>输入与输出</h3><p>输入：无业务数据；输出：页面样式。CSS 不决定编码结果。</p><h3>人工审计解释</h3><div class="tip">样式与逻辑隔离；可查证绘图节点类名与 JavaScript 生成的 DOM 类名一致。</div><details><summary>展开查看本块完整原始源码（第 1–105 行）</summary><div class="code"><span class="ln">1</span>&lt;!DOCTYPE html&gt;
+<span class="ln">2</span>&lt;html lang=&quot;zh-CN&quot;&gt;
+<span class="ln">3</span>&lt;head&gt;
+<span class="ln">4</span>&lt;meta charset=&quot;utf-8&quot;&gt;
+<span class="ln">5</span>&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1&quot;&gt;
+<span class="ln">6</span>&lt;meta name=&quot;color-scheme&quot; content=&quot;light&quot;&gt;
+<span class="ln">7</span>&lt;title&gt;字符坐标映射 · 自由路径&lt;/title&gt;
+<span class="ln">8</span>&lt;style&gt;
+<span class="ln">9</span>:root{--bg:#f3f6fb;--paper:#fff;--ink:#18243c;--muted:#65748f;--line:#d9e2ef;--primary:#2159c8;--pale:#edf3ff;--warn:#85521c;--orange:#fff4db;--green:#167354}
+<span class="ln">10</span>*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,-apple-system,&quot;Segoe UI&quot;,&quot;PingFang SC&quot;,&quot;Microsoft YaHei&quot;,sans-serif}.wrap{max-width:1220px;margin:0 auto;padding:24px 16px 55px}header{margin-bottom:18px}h1{font-size:clamp(23px,3vw,31px);margin:4px 0 6px;line-height:1.24}h2{font-size:18px;margin:0 0 12px}h3{font-size:15px;margin:0 0 8px}.muted,.help{color:var(--muted)}p{margin:0 0 10px}.tag{font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--primary)}.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:15px}.panel{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:18px;min-width:0}.full{grid-column:1/-1}.step{background:var(--pale);color:var(--primary);border-radius:7px;padding:3px 8px;font-size:12px;margin-right:6px}.notice{border:1px solid #efdea9;background:var(--orange);color:var(--warn);border-radius:9px;padding:9px 12px;margin:10px 0;font-size:13px}.notice.ok{background:#eaf6ef;color:var(--green);border-color:#cee5d8}.notice.error{background:#ffeeee;color:#a32d2d;border-color:#f4c9c9}.hidden{display:none!important}textarea{width:100%;min-height:123px;resize:vertical;border-radius:10px;border:1px solid #bbc8df;background:#fbfcff;color:var(--ink);padding:10px 12px;font:13px/1.65 ui-monospace,Consolas,monospace}textarea:focus,button:focus-visible,select:focus{outline:3px solid #a6c6fa;outline-offset:2px}button,select{color:var(--ink);background:#fff;border:1px solid #bcc9dc;border-radius:9px;padding:8px 11px;min-height:36px;font:700 12px/1.3 system-ui,sans-serif;cursor:pointer}button:hover{background:#f3f7fd}button:disabled{opacity:.38;cursor:not-allowed}.primary{background:var(--primary);color:#fff;border-color:var(--primary)}.primary:hover{background:#174aa9}.danger{color:#af3535}.actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}.code,.mono,code{font-family:ui-monospace,Consolas,monospace}.sourcewords{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.wordtag{background:#f7f9fd;border:1px solid #e2e9f4;border-radius:7px;padding:6px 7px;word-break:break-word;font-size:12px}.wordtag b{color:var(--primary);font-family:monospace;margin-right:6px}.stats{font-size:12px;color:var(--muted);margin:8px 0}.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.result{border:1px solid var(--line);padding:12px;border-radius:11px;background:#fbfcff}.result-title{font-weight:800;margin-bottom:10px;overflow-wrap:anywhere}.selectors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.selector label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}.selector select{width:100%;font:11px ui-monospace,Consolas,monospace;min-height:34px;padding:6px}.coord-mode-picker{margin-bottom:5px}.selector .coord-mode-label{font-size:11px;color:#536987;margin:3px 0 2px}.mapped{background:var(--pale);color:#184998;font:700 12px/1.8 ui-monospace,Consolas,monospace;border-radius:8px;padding:9px;margin-top:9px;overflow-wrap:anywhere}.export{background:#f7f9fd;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font:12px/1.7 ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto;min-height:50px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px}.path-help{background:#eef4ff;border:1px solid #d3e2ff;border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:13px}.routes{display:flex;gap:7px;flex-wrap:wrap;min-height:35px;margin:11px 0}.route-tab.active{background:#e3edff;border-color:var(--primary);color:#154aab}.route-tab.blank-view{border-style:dashed}.route-tab.blank-view.active{background:#fff;color:#56677f;border-color:#8fa0bd}.board-scroll{overflow:auto;max-height:690px;background:#f4f7fc;border:1px solid var(--line);border-radius:11px;padding:12px;overscroll-behavior:contain;scrollbar-gutter:stable}.board-stage{position:relative;width:max-content;min-width:100%;isolation:isolate}.board-groups{position:relative;display:grid;grid-template-columns:repeat(var(--cols,2),390px);gap:10px}.node-group{background:#fff;border:1px solid #d8e2f0;border-radius:9px;padding:9px}.node-header{font-size:11px;color:var(--muted);font-weight:800;margin-bottom:8px}.slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.slot{background:#f8faff;border:1px solid #e0e8f3;padding:7px;border-radius:8px;min-height:79px}.slotname{text-align:center;color:var(--muted);font:700 10px/1.5 ui-monospace,monospace;margin-bottom:5px}.nodeholder{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}.node{position:relative;min-height:36px;min-width:32px;border:1.4px solid #bbcae0;border-radius:7px;padding:6px 7px;background:#fff;font:800 14px/1 ui-monospace,monospace;touch-action:none;user-select:none}.node.used{background:#eaf1ff;border-color:#416bb8}.node.active{outline:2px solid #2859c7;outline-offset:1px}.node.focused{background:#faecd6;border-color:#b17623}.node .count{position:absolute;right:-5px;top:-6px;border-radius:9px;padding:1px 4px;color:white;background:#2b5bc1;font:10px/1.35 ui-monospace,monospace}.overlay{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:visible}.path-editor{display:flex;flex-wrap:wrap;align-items:center;gap:5px;background:#f7f9fd;border:1px solid var(--line);border-radius:9px;padding:10px;max-height:165px;overflow:auto;min-height:55px}.path-item{border-radius:7px;min-width:35px;background:#fff;padding:7px}.path-item.selected{background:#f8e8cb;border-color:#b77c21}.path-index{color:var(--muted);font-size:10px}.editbar{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.mini{font-size:11px;padding:6px 9px;min-height:32px}.titleline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.foot{font-size:12px;color:var(--muted);margin-top:10px}.status{font-size:12px;color:var(--muted)}.badge{font-size:11px;border:1px solid var(--line);padding:2px 7px;border-radius:999px;color:var(--muted)}.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.three .panel{padding:11px}.pill{background:#e9f3ee;color:#126b4e;border-radius:7px;padding:2px 7px;font-size:11px}.spaced{margin-top:14px}.hint{font-size:11px;color:var(--muted)}
+<span class="ln">11</span>@media(max-width:840px){.grid,.results,.three{grid-template-columns:1fr}.full{grid-column:1}.wrap{padding:14px 9px 36px}.panel{padding:13px}.sourcewords{grid-template-columns:repeat(3,minmax(0,1fr))}}
+<span class="ln">12</span>@media(max-width:380px){.sourcewords{grid-template-columns:repeat(2,minmax(0,1fr))}}
+<span class="ln">13</span>@media print{button,select,.actions{display:none!important}.board-scroll{overflow:visible;max-height:none}.wrap{max-width:none}}
+<span class="ln">14</span>
+<span class="ln">15</span>.modebar{display:flex;gap:8px;margin:16px 0;flex-wrap:wrap}
+<span class="ln">16</span>.modebar button{padding:12px 18px;font-size:15px}
+<span class="ln">17</span>.modebar button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+<span class="ln">18</span>.fold-heading{display:flex;gap:9px;align-items:center;justify-content:space-between}
+<span class="ln">19</span>.fold-toggle{border:1px solid var(--line);color:var(--primary);padding:5px 10px;min-height:30px;font-size:12px}
+<span class="ln">20</span>.fold-content{margin-top:10px}
+<span class="ln">21</span>.panel.folded&gt;.fold-content{display:none}
+<span class="ln">22</span>.panel.folded&gt;.fold-heading,.panel.folded&gt;.titleline{margin-bottom:0}
+<span class="ln">23</span>.route-option{display:inline-flex;align-items:center;border:1px solid #bfcce0;border-radius:12px;overflow:hidden;background:#fff;gap:0;min-height:43px}
+<span class="ln">24</span>.route-option.editing{outline:2px solid #2159c8;outline-offset:1px}
+<span class="ln">25</span>.route-option .show-route{margin:0 7px 0 12px;cursor:pointer;width:18px;height:18px;accent-color:#2159c8}
+<span class="ln">26</span>.route-option .route-edit{border:0;border-left:1px solid #dce3ed;border-radius:0;padding:9px 12px;min-height:41px}
+<span class="ln">27</span>.route-option .route-edit.active{color:#1245a7;background:#e8f0ff}
+<span class="ln">28</span>.route-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:8px 0}
+<span class="ln">29</span>.node.route-shown{background:#eaf1ff;border-color:#527bce}
+<span class="ln">30</span>.node .multi-counts{position:absolute;right:-8px;top:-15px;display:flex;gap:2px;z-index:4;pointer-events:none}
+<span class="ln">31</span>.node .multi-count{border-radius:8px;padding:1px 4px;color:white;font:700 10px/1.25 ui-monospace,Consolas,monospace;white-space:nowrap}
+<span class="ln">32</span>.crypto-input{width:100%;border:1px solid #bfcce0;border-radius:8px;min-height:38px;padding:7px 9px;color:var(--ink);background:#fff;font:13px ui-monospace,Consolas,monospace}
+<span class="ln">33</span>.field-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+<span class="ln">34</span>.field-grid label,.recover-field{display:block;font-size:12px;color:var(--muted)}
+<span class="ln">35</span>.field-grid input{margin-top:3px}
+<span class="ln">36</span>.recover-segment{margin:12px 0;border:1px solid #d4deed;border-radius:14px;padding:13px;background:#fff}
+<span class="ln">37</span>.segment-head{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+<span class="ln">38</span>.segment-head h3{margin:0}
+<span class="ln">39</span>.segment-body{margin-top:12px}
+<span class="ln">40</span>.recover-segment.closed .segment-body{display:none}
+<span class="ln">41</span>.rec-mapping{display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:8px;align-items:center;margin:8px 0}
+<span class="ln">42</span>.rec-mapping input{width:100%}
+<span class="ln">43</span>.rec-output{font:12px/1.7 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all;background:#f7f9fd;border:1px solid #dfe6f1;border-radius:10px;padding:9px;min-height:42px;max-height:220px;overflow:auto}
+<span class="ln">44</span>.status-grid{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+<span class="ln">45</span>.small-note{font-size:12px;color:var(--muted);margin:8px 0}
+<span class="ln">46</span>.warning{background:#fff7df;border:1px solid #efd9a0;border-radius:10px;padding:10px;color:#81581b}
+<span class="ln">47</span>@media(max-width:720px){.field-grid{grid-template-columns:1fr}.rec-mapping{grid-template-columns:1fr}.route-option{min-width:0}}
+<span class="ln">48</span>
+<span class="ln">49</span>
+<span class="ln">50</span>.rec-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+<span class="ln">51</span>.rec-controls label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+<span class="ln">52</span>.rec-controls input[type=number]{width:90px}
+<span class="ln">53</span>.rec-stage-scroll{overflow:auto;max-height:660px;scrollbar-gutter:stable;background:#f4f7fc;border:1px solid #d9e2ef;border-radius:11px;padding:12px;overscroll-behavior:contain}
+<span class="ln">54</span>.rec-stage{position:relative;width:max-content;min-width:100%;isolation:isolate}
+<span class="ln">55</span>.rec-groups{position:relative;display:grid;grid-template-columns:repeat(var(--rec-cols,2),390px);gap:10px}
+<span class="ln">56</span>.rec-group{border:1px solid #d8e2f0;background:#fff;border-radius:11px;padding:10px;min-width:0}
+<span class="ln">57</span>.rec-group-head{display:flex;align-items:center;gap:7px;justify-content:space-between;margin:0 0 8px}
+<span class="ln">58</span>.rec-group-head strong{color:#60718e;font-size:12px}
+<span class="ln">59</span>.rec-group-head button{font-size:11px;min-height:26px;padding:4px 7px}
+<span class="ln">60</span>.rec-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+<span class="ln">61</span>.rec-slot{background:#f8faff;border:1px solid #e0e8f3;padding:8px;border-radius:9px;min-height:93px}
+<span class="ln">62</span>.rec-slot-head{display:flex;align-items:center;justify-content:center;gap:5px;color:#627390;font-size:11px;font-family:ui-monospace,monospace;font-weight:800;margin-bottom:8px}
+<span class="ln">63</span>.rec-slot-head span{max-width:144px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rec-slot-mode{display:block;width:100%;min-height:27px;padding:3px 5px;margin:0 0 7px;font:11px ui-monospace,monospace}
+<span class="ln">64</span>.rec-char-wrap{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px}
+<span class="ln">65</span>.rec-char{position:relative;min-height:38px;min-width:32px;padding:5px 7px;border:1.4px solid #bbcae0;border-radius:8px;background:#fff;font:800 15px/1 ui-monospace,monospace;touch-action:none;user-select:none}
+<span class="ln">66</span>.rec-char.filled{background:#eaf1ff;border-color:#527bce;outline:1px solid #527bce}
+<span class="ln">67</span>.rec-char.conflict{background:#fff0ed;border-color:#bb3737;outline:2px solid #bb3737}
+<span class="ln">68</span>.rec-char .rec-count{position:absolute;right:-6px;top:-11px;background:#b86525;color:#fff;border-radius:8px;padding:1px 4px;font:700 10px/1.25 ui-monospace,monospace;pointer-events:none}
+<span class="ln">69</span>.rec-char .rec-count.bad{background:#b82d2d}
+<span class="ln">70</span>.rec-char.recfocus{box-shadow:0 0 0 3px #f1c989}
+<span class="ln">71</span>.rec-arrow-svg{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:visible}
+<span class="ln">72</span>.rec-path-list{display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:52px;padding:10px;background:#f7f9fd;border:1px solid #dfe6f1;border-radius:9px;max-height:170px;overflow:auto}
+<span class="ln">73</span>.rec-path-step{min-width:42px;padding:6px 7px;border-radius:7px;background:#fff;font:700 13px/1.3 ui-monospace,monospace}
+<span class="ln">74</span>.rec-path-step.selected{background:#f8e8cb;border-color:#b77c21}
+<span class="ln">75</span>.rec-path-step .smallidx{color:#687993;font-size:10px;margin-right:4px}
+<span class="ln">76</span>.rec-legend{font-size:12px;color:#61718c;margin:10px 0;line-height:1.6}
+<span class="ln">77</span>.rec-legend b{color:#245bb7}
+<span class="ln">78</span>.rec-recovered-codes{font:12px/1.7 ui-monospace,monospace;white-space:pre-wrap;word-break:break-all;background:#f7f9fd;border:1px solid #dfe6f1;border-radius:10px;padding:9px;min-height:45px}
+<span class="ln">79</span>.rec-layout-menu{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;align-items:center;padding:6px 0}
+<span class="ln">80</span>.rec-layout-menu select{min-height:26px;padding:3px 5px;font:11px ui-monospace,monospace}
+<span class="ln">81</span>.rec-validation{font-size:12px;margin:8px 0;line-height:1.6}
+<span class="ln">82</span>.rec-validation.good{color:#146849}.rec-validation.bad{color:#b02d2d}
+<span class="ln">83</span>@media(max-width:720px){.rec-groups{grid-template-columns:repeat(var(--rec-cols,1),390px)}}
+<span class="ln">84</span>
+<span class="ln">85</span>.rec-routebar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:10px 0}
+<span class="ln">86</span>.rec-route-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0}
+<span class="ln">87</span>.rec-route-tab{display:inline-flex;align-items:center;border:1px solid #b9c9e4;border-radius:11px;overflow:hidden;background:#fff}
+<span class="ln">88</span>.rec-route-tab.editing{outline:2px solid #2761d1;outline-offset:2px;background:#e8f0ff}
+<span class="ln">89</span>.rec-route-tab label{display:flex;align-items:center;padding:7px 9px;border-right:1px solid #d4deed;cursor:pointer}
+<span class="ln">90</span>.rec-route-tab input{width:18px;height:18px;accent-color:#275ccd;cursor:pointer}
+<span class="ln">91</span>.rec-route-tab button{border:0;background:transparent;border-radius:0;min-height:40px;padding:9px 13px}
+<span class="ln">92</span>.rec-route-tab.editing button{color:#194da7}
+<span class="ln">93</span>.rec-route-sequences{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:10px 0 15px}
+<span class="ln">94</span>.rec-seq-card{border:1px solid #d9e2f0;background:#fafcff;border-radius:10px;padding:10px;min-width:0}
+<span class="ln">95</span>.rec-seq-card.editing{border-color:#416cd3;background:#f1f6ff}
+<span class="ln">96</span>.rec-seq-card strong{font-size:12px}
+<span class="ln">97</span>.rec-seq-card textarea{min-height:68px;height:68px;margin-top:6px;width:100%;font-size:13px}
+<span class="ln">98</span>.rec-seq-card .rec-seq-metrics{display:block;margin-top:5px;font-size:11px;color:#687993}
+<span class="ln">99</span>.rec-count-stack{position:absolute;top:-13px;right:-8px;display:flex;gap:2px;z-index:5;pointer-events:none;white-space:nowrap}
+<span class="ln">100</span>.rec-count-stack .rec-count{position:static;border-radius:8px;box-shadow:0 0 0 1px #fff}
+<span class="ln">101</span>.rec-char.active-route{outline:2px solid #2b61d1;outline-offset:1px}
+<span class="ln">102</span>.rec-char.focus-node{box-shadow:0 0 0 3px #f1c989}
+<span class="ln">103</span>.rec-route-status{font-size:12px;color:#637390;margin:7px 0}
+<span class="ln">104</span>@media(max-width:720px){.rec-route-sequences{grid-template-columns:1fr}}
+<span class="ln">105</span>&lt;/style&gt;</div></details></section><section class="card" id="s106"><h2>HTML 界面与操作入口</h2><p class="muted">原文件第 106–158 行，53 行；区块 02 / 18</p><h3>职责</h3><p>顶栏、编码输入、参考索引、坐标卡片、路径编辑区、重建工作区、导入导出控件。</p><h3>输入与输出</h3><p>输入：用户在文本框、按钮、文件选择器中的操作；输出：DOM 元素，供下方 JS 绑定。</p><h3>人工审计解释</h3><div class="tip">核心 ID 包括 source、targets、resultPanel、boardGroups、recoverSource、segmentsRoot、importDataFile、progressFile。</div><details><summary>展开查看本块完整原始源码（第 106–158 行）</summary><div class="code"><span class="ln">106</span>&lt;/head&gt;
+<span class="ln">107</span>&lt;body&gt;
+<span class="ln">108</span>&lt;main class=&quot;wrap&quot;&gt;
+<span class="ln">109</span>&lt;header&gt;
+<span class="ln">110</span> &lt;div class=&quot;tag&quot;&gt;LOCAL ONLY · SINGLE FILE · V2.9.2 · COORDINATE MAPPING · MULTI-PATH&lt;/div&gt;
+<span class="ln">111</span> &lt;h1&gt;字符坐标映射 · 自由路径&lt;/h1&gt;
+<span class="ln">112</span> &lt;p class=&quot;muted&quot;&gt;处理规则：每个输入条目提取前四个字母，分别生成四项映射。每项可独立选择单坐标或双坐标；未匹配的字母原样保留。数字拆分为独立字符节点，支持跨组选择、重复引用与多路径组合。&lt;/p&gt;
+<span class="ln">113</span>&lt;/header&gt;
+<span class="ln">114</span>&lt;div class=&quot;modebar&quot; role=&quot;tablist&quot; aria-label=&quot;工作模式&quot;&gt;&lt;button id=&quot;modeEncode&quot; class=&quot;active&quot; type=&quot;button&quot;&gt;编码模式&lt;/button&gt;&lt;button id=&quot;modeRecover&quot; type=&quot;button&quot;&gt;分段重建模式&lt;/button&gt;&lt;/div&gt;
+<span class="ln">115</span>&lt;div id=&quot;encodeWorkspace&quot;&gt;
+<span class="ln">116</span>&lt;section class=&quot;panel&quot; style=&quot;margin-bottom:15px&quot;&gt;
+<span class="ln">117</span>  &lt;div class=&quot;titleline&quot;&gt;&lt;h2 style=&quot;margin:0&quot;&gt;编辑状态与历史&lt;/h2&gt;&lt;span id=&quot;draftState&quot; class=&quot;badge&quot;&gt;未生成&lt;/span&gt;&lt;/div&gt;
+<span class="ln">118</span>  &lt;div class=&quot;actions spaced&quot;&gt;&lt;button id=&quot;undo&quot; type=&quot;button&quot;&gt;↶ 撤销操作&lt;/button&gt;&lt;button id=&quot;redo&quot; type=&quot;button&quot;&gt;↷ 重做操作&lt;/button&gt;&lt;button id=&quot;exportProject&quot; class=&quot;primary&quot; type=&quot;button&quot;&gt;导出完整工程 JSON&lt;/button&gt;&lt;button id=&quot;importProject&quot; type=&quot;button&quot;&gt;导入完整工程 JSON&lt;/button&gt;&lt;input type=&quot;file&quot; accept=&quot;.json,application/json&quot; id=&quot;projectFile&quot; class=&quot;hidden&quot;&gt;&lt;/div&gt;
+<span class="ln">119</span>  &lt;div id=&quot;draftMessage&quot; class=&quot;notice hidden&quot; role=&quot;status&quot;&gt;&lt;/div&gt;
+<span class="ln">120</span>&lt;/section&gt;
+<span class="ln">121</span>&lt;div class=&quot;grid&quot;&gt;
+<span class="ln">122</span>&lt;section class=&quot;panel&quot;&gt;&lt;h2&gt;&lt;span class=&quot;step&quot;&gt;1&lt;/span&gt;参考英文文本&lt;/h2&gt;&lt;textarea id=&quot;source&quot; aria-label=&quot;参考英文文本&quot; placeholder=&quot;参考英文文本&quot; spellcheck=&quot;false&quot; autocomplete=&quot;off&quot; autocorrect=&quot;off&quot; autocapitalize=&quot;off&quot;&gt;&lt;/textarea&gt;&lt;div class=&quot;stats&quot; id=&quot;sourceCount&quot;&gt;英文条目：0&lt;/div&gt;&lt;div id=&quot;coverage&quot; class=&quot;notice&quot;&gt;尚未输入参考文本。&lt;/div&gt;&lt;/section&gt;
+<span class="ln">123</span>&lt;section class=&quot;panel&quot;&gt;&lt;h2&gt;&lt;span class=&quot;step&quot;&gt;2&lt;/span&gt;输入条目&lt;/h2&gt;&lt;textarea id=&quot;targets&quot; aria-label=&quot;输入条目&quot; placeholder=&quot;输入条目&quot; spellcheck=&quot;false&quot; autocomplete=&quot;off&quot; autocorrect=&quot;off&quot; autocapitalize=&quot;off&quot;&gt;&lt;/textarea&gt;&lt;div class=&quot;stats&quot; id=&quot;targetCount&quot;&gt;输入条目：0&lt;/div&gt;&lt;div class=&quot;actions&quot;&gt;&lt;button id=&quot;generate&quot; class=&quot;primary&quot; type=&quot;button&quot;&gt;应用输入并重新生成&lt;/button&gt;&lt;button id=&quot;clearTargets&quot; type=&quot;button&quot;&gt;清空输入&lt;/button&gt;&lt;/div&gt;&lt;div id=&quot;message&quot; class=&quot;notice hidden&quot; role=&quot;status&quot;&gt;&lt;/div&gt;&lt;/section&gt;
+<span class="ln">124</span>&lt;section class=&quot;panel full&quot;&gt;&lt;h2&gt;&lt;span class=&quot;step&quot;&gt;3&lt;/span&gt;参考文本索引表&lt;/h2&gt;&lt;div id=&quot;sourceWords&quot; class=&quot;sourcewords&quot;&gt;&lt;/div&gt;&lt;/section&gt;
+<span class="ln">125</span>&lt;section class=&quot;panel full hidden&quot; id=&quot;resultPanel&quot;&gt;&lt;h2&gt;&lt;span class=&quot;step&quot;&gt;4&lt;/span&gt;逐字母映射与坐标选择&lt;/h2&gt;&lt;div id=&quot;resultSummary&quot; class=&quot;stats&quot;&gt;&lt;/div&gt;&lt;div id=&quot;results&quot; class=&quot;results&quot;&gt;&lt;/div&gt;&lt;/section&gt;
+<span class="ln">126</span>&lt;section class=&quot;panel full hidden&quot; id=&quot;exportPanel&quot;&gt;&lt;h2&gt;坐标映射结果&lt;/h2&gt;&lt;pre class=&quot;export&quot; id=&quot;output&quot;&gt;&lt;/pre&gt;&lt;div class=&quot;toolbar&quot;&gt;&lt;div class=&quot;actions&quot;&gt;&lt;button id=&quot;copyCode&quot; class=&quot;primary&quot;&gt;复制坐标&lt;/button&gt;&lt;button id=&quot;downloadCode&quot;&gt;下载 TXT&lt;/button&gt;&lt;button id=&quot;downloadCodeJson&quot;&gt;下载编码 JSON（不含输入条目）&lt;/button&gt;&lt;/div&gt;&lt;span id=&quot;copyCodeState&quot; class=&quot;status&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/section&gt;
+<span class="ln">127</span>&lt;section class=&quot;panel full hidden&quot; id=&quot;pathPanel&quot;&gt;&lt;h2&gt;&lt;span class=&quot;step&quot;&gt;5&lt;/span&gt;单字符级自由连线&lt;/h2&gt;
+<span class="ln">128</span>&lt;div class=&quot;actions&quot;&gt;&lt;button id=&quot;newPath&quot; class=&quot;primary&quot;&gt;＋ 新建路径&lt;/button&gt;&lt;button id=&quot;repeatLast&quot;&gt;重复末项&lt;/button&gt;&lt;button id=&quot;undoPoint&quot;&gt;移除末项&lt;/button&gt;&lt;button id=&quot;removePath&quot; class=&quot;danger&quot;&gt;删除当前路径&lt;/button&gt;&lt;button id=&quot;clearPaths&quot; class=&quot;danger&quot;&gt;清空所有路径&lt;/button&gt;&lt;label class=&quot;status&quot; for=&quot;groupsPerRow&quot;&gt;每行显示：&lt;/label&gt;&lt;select id=&quot;groupsPerRow&quot;&gt;&lt;option value=&quot;1&quot;&gt;1组&lt;/option&gt;&lt;option value=&quot;2&quot; selected&gt;2组&lt;/option&gt;&lt;option value=&quot;3&quot;&gt;3组&lt;/option&gt;&lt;option value=&quot;4&quot;&gt;4组&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+<span class="ln">129</span>&lt;div class=&quot;route-controls&quot;&gt;&lt;button id=&quot;showAllPaths&quot; type=&quot;button&quot;&gt;显示全部路径&lt;/button&gt;&lt;button id=&quot;showNoPaths&quot; type=&quot;button&quot;&gt;空白视图&lt;/button&gt;&lt;/div&gt;&lt;div id=&quot;routeTabs&quot; class=&quot;routes&quot;&gt;&lt;/div&gt;&lt;div id=&quot;routeStatus&quot; class=&quot;status&quot;&gt;&lt;/div&gt;
+<span class="ln">130</span>&lt;div id=&quot;boardScroll&quot; class=&quot;board-scroll&quot; aria-label=&quot;连线节点区域&quot;&gt;&lt;div id=&quot;boardStage&quot; class=&quot;board-stage&quot;&gt;&lt;div id=&quot;boardGroups&quot; class=&quot;board-groups&quot;&gt;&lt;/div&gt;&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; id=&quot;pathOverlay&quot; class=&quot;overlay&quot; aria-hidden=&quot;true&quot;&gt;&lt;/svg&gt;&lt;/div&gt;&lt;/div&gt;
+<span class="ln">131</span>&lt;div class=&quot;spaced&quot;&gt;&lt;h3&gt;当前路径 · 单次引用编辑&lt;/h3&gt;&lt;div id=&quot;pathEditor&quot; class=&quot;path-editor&quot;&gt;&lt;/div&gt;&lt;div class=&quot;editbar&quot;&gt;&lt;button class=&quot;mini&quot; id=&quot;moveLeft&quot;&gt;← 左移&lt;/button&gt;&lt;button class=&quot;mini&quot; id=&quot;moveRight&quot;&gt;右移 →&lt;/button&gt;&lt;button class=&quot;mini&quot; id=&quot;duplicateOne&quot;&gt;重复选中项&lt;/button&gt;&lt;button class=&quot;mini&quot; id=&quot;deleteOne&quot;&gt;删除选中项&lt;/button&gt;&lt;button class=&quot;mini&quot; id=&quot;insertMode&quot;&gt;在选中项后插入：关&lt;/button&gt;&lt;/div&gt;&lt;p class=&quot;hint&quot; id=&quot;selectionInfo&quot;&gt;&lt;/p&gt;&lt;/div&gt;
+<span class="ln">132</span>&lt;div class=&quot;spaced&quot;&gt;&lt;h3&gt;完整路径序列（显示空格）&lt;/h3&gt;&lt;pre class=&quot;export&quot; id=&quot;routeOutput&quot;&gt;尚无路径。&lt;/pre&gt;&lt;h3 class=&quot;spaced&quot;&gt;连续字符序列&lt;/h3&gt;&lt;pre class=&quot;export&quot; id=&quot;compactOutput&quot;&gt;尚无路径。&lt;/pre&gt;&lt;div class=&quot;toolbar&quot;&gt;&lt;div class=&quot;actions&quot;&gt;&lt;button id=&quot;copyPaths&quot; class=&quot;primary&quot;&gt;复制分隔序列&lt;/button&gt;&lt;button id=&quot;copyCompact&quot;&gt;复制纯字符&lt;/button&gt;&lt;button id=&quot;downloadPaths&quot;&gt;下载路径 TXT&lt;/button&gt;&lt;button id=&quot;saveRules&quot;&gt;保存路径规则 JSON&lt;/button&gt;&lt;button id=&quot;importRules&quot;&gt;导入路径规则 JSON&lt;/button&gt;&lt;input id=&quot;rulesFile&quot; class=&quot;hidden&quot; type=&quot;file&quot; accept=&quot;.json,application/json&quot;&gt;&lt;/div&gt;&lt;span id=&quot;pathsMessage&quot; class=&quot;status&quot;&gt;&lt;/span&gt;&lt;/div&gt;
+<span class="ln">133</span>&lt;/div&gt;&lt;/section&gt;
+<span class="ln">134</span>&lt;/div&gt;
+<span class="ln">135</span>
+<span class="ln">136</span>&lt;/div&gt;
+<span class="ln">137</span>&lt;div id=&quot;recoverWorkspace&quot; class=&quot;hidden&quot;&gt;
+<span class="ln">138</span>&lt;section class=&quot;panel&quot; data-fold=&quot;recSource&quot;&gt;
+<span class="ln">139</span> &lt;h2&gt;参考文本&lt;/h2&gt;
+<span class="ln">140</span> &lt;label class=&quot;recover-field&quot; for=&quot;recoverSource&quot;&gt;参考英文文本&lt;/label&gt;
+<span class="ln">141</span> &lt;textarea id=&quot;recoverSource&quot; placeholder=&quot;参考英文文本&quot;&gt;&lt;/textarea&gt;
+<span class="ln">142</span> &lt;div id=&quot;recSourceCount&quot; class=&quot;stats&quot;&gt;参考文本：0 词&lt;/div&gt;
+<span class="ln">143</span> &lt;div class=&quot;spaced&quot;&gt;&lt;label class=&quot;recover-field&quot; for=&quot;importDataFile&quot;&gt;导入文件（TXT）&lt;/label&gt;
+<span class="ln">144</span> &lt;input type=&quot;file&quot; id=&quot;importDataFile&quot; accept=&quot;.txt,text/plain&quot;&gt;&lt;span id=&quot;importDataStatus&quot; class=&quot;status&quot;&gt;尚未导入文件&lt;/span&gt;&lt;/div&gt;
+<span class="ln">145</span>&lt;/section&gt;
+<span class="ln">146</span>&lt;section class=&quot;panel spaced&quot; data-fold=&quot;segments&quot;&gt;
+<span class="ln">147</span> &lt;h2&gt;分段重建&lt;/h2&gt;
+<span class="ln">148</span> &lt;div class=&quot;actions&quot;&gt;&lt;button id=&quot;newSegment&quot; class=&quot;primary&quot;&gt;＋ 新增重建片段&lt;/button&gt;&lt;/div&gt;
+<span class="ln">149</span> &lt;div id=&quot;segmentsRoot&quot;&gt;&lt;/div&gt;
+<span class="ln">150</span>&lt;/section&gt;
+<span class="ln">151</span>&lt;section class=&quot;panel spaced&quot; data-fold=&quot;recProgress&quot;&gt;
+<span class="ln">152</span> &lt;h2&gt;工作进度 · 手动导入导出&lt;/h2&gt;
+<span class="ln">153</span> &lt;div class=&quot;actions spaced&quot;&gt;&lt;button id=&quot;saveProgress&quot; class=&quot;primary&quot;&gt;导出工作进度 JSON&lt;/button&gt;&lt;button id=&quot;openProgress&quot;&gt;导入工作进度 JSON&lt;/button&gt;&lt;input class=&quot;hidden&quot; type=&quot;file&quot; id=&quot;progressFile&quot; accept=&quot;.json,application/json&quot;&gt;&lt;/div&gt;
+<span class="ln">154</span> &lt;div id=&quot;progressStatus&quot; class=&quot;status&quot;&gt;&lt;/div&gt;
+<span class="ln">155</span>&lt;/section&gt;
+<span class="ln">156</span>&lt;/div&gt;
+<span class="ln">157</span>&lt;/main&gt;
+<span class="ln">158</span>&lt;script&gt;</div></details></section><section class="card" id="s159"><h2>数据模型、文本切割与坐标生成</h2><p class="muted">原文件第 159–185 行，27 行；区块 03 / 18</p><h3>职责</h3><p>空状态、源词解析、目标条目提取、短词填充、坐标模式、候选位置、编码文本和字符节点。</p><h3>输入与输出</h3><p>输入：参考英文文本及目标条目；输出：四项坐标与 token 节点集合。</p><h3>人工审计解释</h3><div class="tip">单坐标检查参考词是否包含字母；双坐标寻找词序号和字符序号。无法匹配时保留原字母。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>wordsOf()</code> <small>第 167 行</small>：以正则提取 ASCII 英文单词；按出现顺序返回。</div><div class="func"><code>targetsOf()</code> <small>第 168 行</small>：按空白和指定标点切分目标条目，统一转小写。</div><div class="func"><code>lettersFor()</code> <small>第 169 行</small>：提取前四个位置；短词按指定重复规则补足四项。</div><div class="func"><code>validModes()</code> <small>第 176 行</small>：验证每条目恰好四种坐标模式，且仅 single/double。</div><div class="func"><code>choices()</code> <small>第 177 行</small>：逐字母扫描参考词；根据模式形成精确坐标或仅词序号的候选，并排序。</div><div class="func"><code>recordsFor()</code> <small>第 178 行</small>：结合目标、参考词、合法旧选择与各项模式生成映射记录。</div><div class="func"><code>codeFor()</code> <small>第 179 行</small>：输出选定坐标文本；没有合法坐标时回退原字母。</div><div class="func"><code>expandCode()</code> <small>第 180 行</small>：把方括号坐标去除标点后逐字符拆分；单字母直接拆分。</div><div class="func"><code>rebuildTokens()</code> <small>第 181 行</small>：将所有条目的四项编码展开为稳定节点 ID，并生成索引。</div><div class="func"><code>token()</code> <small>第 182 行</small>：通过节点 ID 获取记录。</div><div class="func"><code>tokenText()</code> <small>第 183 行</small>：通过节点 ID 获取字符；缺失时标 ?。</div><div class="func"><code>currentText()</code> <small>第 184 行</small>：生成按条目编号排列的四项坐标文本。</div><div class="func"><code>routeLine()</code> <small>第 185 行</small>：将某条路径沿节点 ID 重建为字符序列。</div></div><details><summary>展开查看本块完整原始源码（第 159–185 行）</summary><div class="code"><span class="ln">159</span>&#x27;use strict&#x27;;
+<span class="ln">160</span>const $=id=&gt;document.getElementById(id), fmt=n=&gt;String(n).padStart(2,&#x27;0&#x27;);
+<span class="ln">161</span>const empty=()=&gt;({sourceText:&#x27;&#x27;,targetText:&#x27;&#x27;,sourceWords:[],targets:[],records:[],paths:[],active:-1});
+<span class="ln">162</span>let state=empty(),tokens=[],tokenIndex=new Map(),selectedIndex=-1,insertAfter=false,history=[],future=[],drag=null,drawPending=false;
+<span class="ln">163</span>let dirty=false,loaded=false;
+<span class="ln">164</span>const colors=[&#x27;#2764cf&#x27;,&#x27;#b45d20&#x27;,&#x27;#168365&#x27;,&#x27;#8d4eb0&#x27;,&#x27;#c33a63&#x27;,&#x27;#46832a&#x27;];
+<span class="ln">165</span>let visibleRoutes=new Set();
+<span class="ln">166</span>const defaultVisibility=()=&gt;{visibleRoutes=new Set(state.active&gt;=0&amp;&amp;state.paths[state.active]?[state.active]:[])};
+<span class="ln">167</span>function wordsOf(s){return s.match(/[A-Za-z]+/g)||[]}
+<span class="ln">168</span>function targetsOf(s){let v=s.trim();return v?v.split(/[\s,，;；、]+/).filter(Boolean).map(x=&gt;x.toLowerCase()):[]}
+<span class="ln">169</span>function lettersFor(w){if(w.length&gt;=4)return[w[0],w[1],w[2],w[3]];if(w.length===3)return[w[0],w[1],w[1],w[2]];if(w.length===2)return[w[0],w[1],w[1],w[1]];return[w[0],w[0],w[0],w[0]]}
+<span class="ln">170</span>const COORD_SINGLE=&#x27;single&#x27;, COORD_DOUBLE=&#x27;double&#x27;;
+<span class="ln">171</span>const FOUR_DOUBLE=[COORD_DOUBLE,COORD_DOUBLE,COORD_DOUBLE,COORD_DOUBLE];
+<span class="ln">172</span>const LEGACY_COORD_MODES=[COORD_DOUBLE,COORD_SINGLE,COORD_SINGLE,COORD_DOUBLE];
+<span class="ln">173</span>const COORD_RULE_VERSION=&#x27;coordinate-mapping-v1&#x27;;
+<span class="ln">174</span>const COORD_RULE_LEGACY=&#x27;mixed-first-second-third-fourth-flexible-v3&#x27;;
+<span class="ln">175</span>const TYPE_WORKSPACE=&#x27;coordinate-workspace-project&#x27;, TYPE_PATHS=&#x27;coordinate-path-set&#x27;, TYPE_SESSION=&#x27;coordinate-session&#x27;;
+<span class="ln">176</span>function validModes(m){return Array.isArray(m)&amp;&amp;m.length===4&amp;&amp;m.every(x=&gt;x===COORD_SINGLE||x===COORD_DOUBLE)}
+<span class="ln">177</span>function choices(letter,words,strict){const a=[];words.forEach((w,wi)=&gt;{const chars=Array.from(w.toLowerCase());if(strict){chars.forEach((ch,ci)=&gt;{if(ch===letter)a.push({wi:wi+1,ci:ci+1,key:`${wi+1}:${ci+1}`,word:w})})}else if(chars.includes(letter))a.push({wi:wi+1,key:String(wi+1),word:w})});a.sort((x,y)=&gt;strict?((x.ci===1?0:1)-(y.ci===1?0:1)||x.wi-y.wi||x.ci-y.ci):x.wi-y.wi);return a}
+<span class="ln">178</span>function recordsFor(sourceWords,targets,chosenKeys,modesByWord){return targets.map((word,ri)=&gt;{const letters=lettersFor(word),modes=validModes(modesByWord?.[ri])?[...modesByWord[ri]]:[...FOUR_DOUBLE];const options=letters.map((l,i)=&gt;choices(l,sourceWords,modes[i]===COORD_DOUBLE));const chosen=options.map((opts,i)=&gt;{const wanted=chosenKeys?.[ri]?.[i];return wanted!==undefined&amp;&amp;opts.some(o=&gt;o.key===wanted)?wanted:(opts[0]?.key??null)});return {word,letters,modes,options,chosen}})}
+<span class="ln">179</span>function codeFor(rec,i){const opt=rec.options[i].find(x=&gt;x.key===rec.chosen[i]);return !opt?rec.letters[i]:rec.modes[i]===COORD_DOUBLE?`[${fmt(opt.wi)},${fmt(opt.ci)}]`:`[${fmt(opt.wi)}]`}
+<span class="ln">180</span>function expandCode(code){return /^\[\d+(?:,\d+)?\]$/.test(code)?Array.from(code.slice(1,-1).replace(/,/g,&#x27;&#x27;)):Array.from(code)}
+<span class="ln">181</span>function rebuildTokens(){tokens=[];state.records.forEach((r,ri)=&gt;{for(let ci=0;ci&lt;4;ci++){const code=codeFor(r,ci);expandCode(code).forEach((v,ti)=&gt;tokens.push({id:`${ri}.${ci}.${ti}`,ri,ci,ti,text:v,code}))}});tokenIndex=new Map(tokens.map(t=&gt;[t.id,t]))}
+<span class="ln">182</span>function token(id){return tokenIndex.get(id)||null}
+<span class="ln">183</span>function tokenText(id){return token(id)?.text??&#x27;?&#x27;}
+<span class="ln">184</span>function currentText(){return state.records.map((r,i)=&gt;`${fmt(i+1)}. ${r.chosen.map((_,ci)=&gt;codeFor(r,ci)).join(&#x27; &#x27;)}`).join(&#x27;\n&#x27;)}
+<span class="ln">185</span>function routeLine(p,i,spaced){return `路径 ${fmt(i+1)}：${p.map(tokenText).join(spaced?&#x27; &#x27;:&#x27;&#x27;)}`}</div></details></section><section class="card" id="s186"><h2>状态快照、撤销重做与重新生成</h2><p class="muted">原文件第 186–205 行，20 行；区块 04 / 18</p><h3>职责</h3><p>保存选择与路径的状态快照，生成新映射后过滤失效节点引用。</p><h3>输入与输出</h3><p>输入：已生成状态、草稿和用户操作；输出：新 state、undo/redo 历史和状态提示。</p><h3>人工审计解释</h3><div class="tip">当坐标改变时不能假定原节点保持同一含义；代码通过 id 与 code 共同检查。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>report()</code> <small>第 186 行</small>：显示统一提示和类型样式。</div><div class="func"><code>notify()</code> <small>第 187 行</small>：更新路径操作提示。</div><div class="func"><code>snap()</code> <small>第 188 行</small>：取得撤销/重做状态快照。</div><div class="func"><code>changed()</code> <small>第 189 行</small>：记录状态快照和清空重做历史；检查是否在实际调用中使用。</div><div class="func"><code>restore()</code> <small>第 190 行</small>：根据快照重新建立记录、节点索引和有效路径。</div><div class="func"><code>checkpoint()</code> <small>第 191 行</small>：将当前已生成状态压入撤销历史。</div><div class="func"><code>undo()</code> <small>第 192 行</small>：从历史恢复上一份快照。</div><div class="func"><code>redo()</code> <small>第 193 行</small>：恢复刚撤销的下一份快照。</div><div class="func"><code>refreshUndo()</code> <small>第 194 行</small>：更新撤销/重做按钮可用状态。</div><div class="func"><code>refreshDraft()</code> <small>第 195 行</small>：比较输入草稿与已生成数据；标出尚未应用的修改。</div><div class="func"><code>renderSource()</code> <small>第 196 行</small>：展示参考词索引及缺失字母覆盖提示。</div><div class="func"><code>generate()</code> <small>第 197 行</small>：验证输入限制，生成新编码，并按节点来源验证保留已有路径。</div></div><details><summary>展开查看本块完整原始源码（第 186–205 行）</summary><div class="code"><span class="ln">186</span>function report(where,msg,kind=&#x27;&#x27;){const el=$(where);el.className=&#x27;notice&#x27;+(kind?&#x27; &#x27;+kind:&#x27;&#x27;);el.textContent=msg}
+<span class="ln">187</span>function notify(msg){$(&#x27;pathsMessage&#x27;).textContent=msg}
+<span class="ln">188</span>function snap(){return {sourceText:state.sourceText,targetText:state.targetText,chosen:state.records.map(r=&gt;[...r.chosen]),modes:state.records.map(r=&gt;[...r.modes]),paths:state.paths.map(p=&gt;[...p]),active:state.active,selectedIndex,insertAfter}}
+<span class="ln">189</span>function changed(){if(loaded){history.push(snap());if(history.length&gt;100)history.shift()}future=[];loaded=true}
+<span class="ln">190</span>function restore(s){state.sourceText=s.sourceText;state.targetText=s.targetText;state.sourceWords=wordsOf(s.sourceText);state.targets=targetsOf(s.targetText);state.records=recordsFor(state.sourceWords,state.targets,s.chosen,s.modes);rebuildTokens();const ids=new Set(tokens.map(t=&gt;t.id));state.paths=(s.paths||[]).map(p=&gt;p.filter(id=&gt;ids.has(id)));state.active=Math.min(s.active??-1,state.paths.length-1);selectedIndex=s.selectedIndex??-1;insertAfter=!!s.insertAfter;defaultVisibility();$(&#x27;source&#x27;).value=state.sourceText;$(&#x27;targets&#x27;).value=state.targetText;dirty=false;refreshDraft();renderSource();renderAll()}
+<span class="ln">191</span>function checkpoint(){if(!loaded)return;history.push(snap());if(history.length&gt;100)history.shift();future=[]}
+<span class="ln">192</span>function undo(){if(!history.length)return;future.push(snap());restore(history.pop())}
+<span class="ln">193</span>function redo(){if(!future.length)return;history.push(snap());restore(future.pop())}
+<span class="ln">194</span>function refreshUndo(){$(&#x27;undo&#x27;).disabled=!history.length;$(&#x27;redo&#x27;).disabled=!future.length}
+<span class="ln">195</span>function refreshDraft(){dirty=$(&#x27;source&#x27;).value!==state.sourceText||$(&#x27;targets&#x27;).value!==state.targetText;const d=$(&#x27;draftState&#x27;);d.textContent=!loaded?&#x27;未生成&#x27;:dirty?&#x27;输入草稿已修改 · 尚未应用&#x27;:&#x27;已生成 · 输入已同步&#x27;;d.style.color=dirty?&#x27;#a45c11&#x27;:&#x27;#17634b&#x27;;$(&#x27;sourceCount&#x27;).textContent=`英文条目：${wordsOf($(&#x27;source&#x27;).value).length}`;$(&#x27;targetCount&#x27;).textContent=`输入条目：${targetsOf($(&#x27;targets&#x27;).value).length}`;const draft=$(&#x27;draftMessage&#x27;);if(dirty&amp;&amp;loaded){report(&#x27;draftMessage&#x27;,&#x27;输入已改变，当前编码与连线仍保持旧版本。点击“应用输入并重新生成”才会更新，且可撤销。&#x27;)}else draft.className=&#x27;notice hidden&#x27;;refreshUndo()}
+<span class="ln">196</span>function renderSource(){const ws=wordsOf($(&#x27;source&#x27;).value);$(&#x27;sourceWords&#x27;).replaceChildren();ws.forEach((w,i)=&gt;{const el=document.createElement(&#x27;div&#x27;);el.className=&#x27;wordtag&#x27;;el.title=Array.from(w).map((c,j)=&gt;`${c}(${fmt(j+1)})`).join(&#x27; &#x27;);const num=document.createElement(&#x27;b&#x27;);num.textContent=fmt(i+1);el.append(num,document.createTextNode(w));$(&#x27;sourceWords&#x27;).append(el)});const letters=new Set(ws.join(&#x27;&#x27;).toLowerCase());const missing=Array.from(&#x27;abcdefghijklmnopqrstuvwxyz&#x27;).filter(c=&gt;!letters.has(c));report(&#x27;coverage&#x27;,ws.length===0?&#x27;尚未输入参考文本。&#x27;:missing.length?`缺少字母：${missing.join(&#x27;、&#x27;)}；相应目标字母将直接原样写出。`:&#x27;26个英文字母均已覆盖。&#x27;,ws.length&amp;&amp;!missing.length?&#x27;ok&#x27;:&#x27;&#x27;)}
+<span class="ln">197</span>function generate(){const src=$(&#x27;source&#x27;).value,dst=$(&#x27;targets&#x27;).value,ws=wordsOf(src),targets=targetsOf(dst);if(!targets.length){report(&#x27;message&#x27;,&#x27;请输入输入条目。&#x27;,&#x27;error&#x27;);return}const invalid=targets.filter(x=&gt;!/^[a-z]+$/.test(x));if(invalid.length){report(&#x27;message&#x27;,`存在非英文目标：${invalid.slice(0,3).join(&#x27;、&#x27;)}`,&#x27;error&#x27;);return}if(ws.length&gt;5000||targets.length&gt;500){report(&#x27;message&#x27;,&#x27;为避免浏览器卡顿，参考文本最多5000词、目标最多500词。&#x27;,&#x27;error&#x27;);return}
+<span class="ln">198</span>  if(loaded)checkpoint();const sameSrc=src===state.sourceText;const oldMap=new Map(tokens.map(t=&gt;[t.id,t.code]));const oldTargets=[...state.targets];const oldPaths=state.paths.map(p=&gt;[...p]);
+<span class="ln">199</span>  const previousChosen=sameSrc?state.records.map((r,i)=&gt;r.word===targets[i]?r.chosen:null):null;
+<span class="ln">200</span>  const previousModes=state.records.map((r,i)=&gt;r.word===targets[i]?r.modes:null);
+<span class="ln">201</span>  state={sourceText:src,targetText:dst,sourceWords:ws,targets,records:recordsFor(ws,targets,previousChosen,previousModes),paths:[],active:-1};rebuildTokens();
+<span class="ln">202</span>  const nextMap=new Map(tokens.map(t=&gt;[t.id,t.code]));const valid=id=&gt;sameSrc&amp;&amp;oldTargets[Number(id.split(&#x27;.&#x27;)[0])]===state.targets[Number(id.split(&#x27;.&#x27;)[0])]&amp;&amp;oldMap.has(id)&amp;&amp;nextMap.get(id)===oldMap.get(id);
+<span class="ln">203</span>  let invalidCount=0;state.paths=oldPaths.map(p=&gt;p.filter(id=&gt;{if(valid(id))return true;invalidCount++;return false}));state.paths=state.paths.filter(p=&gt;p.length);state.active=state.paths.length?0:-1;selectedIndex=-1;insertAfter=false;defaultVisibility();loaded=true;dirty=false;renderAll();renderSource();refreshDraft();
+<span class="ln">204</span>  report(&#x27;message&#x27;,`${targets.length}个输入条目，${ws.length}个参考词。${invalidCount?`先前路径中有${invalidCount}次引用与新编码不一致，已从新版本移除；撤销操作可重建旧工程。`:&#x27;未产生无效路径引用。&#x27;}`,invalidCount?&#x27;&#x27;:&#x27;ok&#x27;);
+<span class="ln">205</span>}</div></details></section><section class="card" id="s206"><h2>编码端坐标选择与可视化</h2><p class="muted">原文件第 206–215 行，10 行；区块 05 / 18</p><h3>职责</h3><p>四项映射卡片、单双坐标下拉框、坐标切换、节点画布生成。</p><h3>输入与输出</h3><p>输入：记录和坐标选择；输出：卡片、画布与节点索引。</p><h3>人工审计解释</h3><div class="tip">逐项独立设置 modes，变更时会提示可能移除已有路径引用。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>codeTokensByItem()</code> <small>第 206 行</small>：筛选指定条目、指定字母对应的节点。</div><div class="func"><code>renderCards()</code> <small>第 207 行</small>：绘制四项坐标选择器和编码文本。</div><div class="func"><code>updateRecordPart()</code> <small>第 210 行</small>：改变单项坐标前提示，并移除不再对应原编码的路径引用。</div><div class="func"><code>updateChoice()</code> <small>第 211 行</small>：修改某项选中的具体候选坐标。</div><div class="func"><code>updateMode()</code> <small>第 212 行</small>：修改某项单双坐标类型、更新候选，并尽量保留有效选择。</div><div class="func"><code>renderBoard()</code> <small>第 214 行</small>：按编码节点生成画布组和按钮。</div><div class="func"><code>renderAll()</code> <small>第 215 行</small>：刷新编码结果面板、节点画布与路径显示。</div></div><details><summary>展开查看本块完整原始源码（第 206–215 行）</summary><div class="code"><span class="ln">206</span>function codeTokensByItem(ri,ci){return tokens.filter(t=&gt;t.ri===ri&amp;&amp;t.ci===ci)}
+<span class="ln">207</span>function renderCards(){const root=$(&#x27;results&#x27;);root.replaceChildren();state.records.forEach((r,ri)=&gt;{const card=document.createElement(&#x27;article&#x27;);card.className=&#x27;result&#x27;;const header=document.createElement(&#x27;div&#x27;);header.className=&#x27;result-title&#x27;;header.textContent=`${fmt(ri+1)} · ${r.word}`;card.append(header);const selector=document.createElement(&#x27;div&#x27;);selector.className=&#x27;selectors&#x27;;for(let ci=0;ci&lt;4;ci++){const outer=document.createElement(&#x27;div&#x27;);outer.className=&#x27;selector&#x27;;const lbl=document.createElement(&#x27;label&#x27;);lbl.textContent=`${[&#x27;① 首字母&#x27;,&#x27;② 第二字母&#x27;,&#x27;③ 第三字母&#x27;,&#x27;④ 第四字母&#x27;][ci]} ${r.letters[ci]}`;
+<span class="ln">208</span>const modeLabel=document.createElement(&#x27;div&#x27;);modeLabel.className=&#x27;coord-mode-label&#x27;;modeLabel.textContent=&#x27;坐标类型&#x27;;const modeSelect=document.createElement(&#x27;select&#x27;);modeSelect.className=&#x27;coord-mode-picker&#x27;;modeSelect.id=`coord_mode_${ri}_${ci}`;modeSelect.setAttribute(&#x27;aria-label&#x27;,`条目${ri+1}第${ci+1}项坐标类型`);modeSelect.add(new Option(&#x27;双坐标（词序号＋字符位置）&#x27;,COORD_DOUBLE));modeSelect.add(new Option(&#x27;单坐标（词序号）&#x27;,COORD_SINGLE));modeSelect.value=r.modes[ci];modeSelect.onchange=()=&gt;updateMode(ri,ci,modeSelect.value);
+<span class="ln">209</span>const select=document.createElement(&#x27;select&#x27;);select.id=`choice_${ri}_${ci}`;if(!r.options[ci].length){const o=new Option(`未匹配：${r.letters[ci]}`,&#x27;&#x27;);select.add(o);select.disabled=true}else{r.options[ci].forEach(opt=&gt;select.add(new Option(r.modes[ci]===COORD_DOUBLE?`[${fmt(opt.wi)},${fmt(opt.ci)}] ${opt.word}`:`[${fmt(opt.wi)}] ${opt.word}`,opt.key)));select.value=r.chosen[ci]??&#x27;&#x27;;select.addEventListener(&#x27;change&#x27;,()=&gt;updateChoice(ri,ci,select.value))}outer.append(lbl,modeLabel,modeSelect,select);selector.append(outer)}card.append(selector);const mapped=document.createElement(&#x27;div&#x27;);mapped.className=&#x27;mapped&#x27;;mapped.textContent=r.chosen.map((_,ci)=&gt;codeFor(r,ci)).join(&#x27; &#x27;);card.append(mapped);root.append(card)})}
+<span class="ln">210</span>function updateRecordPart(ri,ci,mutate,label){const r=state.records[ri];const atRisk=state.paths.reduce((n,p)=&gt;n+p.filter(id=&gt;id.startsWith(`${ri}.${ci}.`)).length,0);if(atRisk&amp;&amp;!confirm(`更改${label}将影响本项已有的 ${atRisk} 次路径引用。继续修改可能移除引用；可以通过“撤销”重建。是否继续？`)){renderCards();return}checkpoint();const before=new Map(tokens.map(t=&gt;[t.id,t.code]));mutate(r);rebuildTokens();const after=new Map(tokens.map(t=&gt;[t.id,t.code]));let removed=0;state.paths=state.paths.map(p=&gt;p.filter(id=&gt;{const keep=after.has(id)&amp;&amp;before.get(id)===after.get(id);if(!keep)removed++;return keep}));selectedIndex=-1;renderAll();notify(removed?`已移除${removed}次失效引用。可以使用“撤销”重建。`:`${label}已更新，未影响的路径保留。`)}
+<span class="ln">211</span>function updateChoice(ri,ci,value){const r=state.records[ri];if(r.chosen[ci]===value)return;updateRecordPart(ri,ci,r=&gt;{r.chosen[ci]=value},&#x27;坐标选择&#x27;)}
+<span class="ln">212</span>function updateMode(ri,ci,value){const r=state.records[ri];if(![COORD_SINGLE,COORD_DOUBLE].includes(value)||r.modes[ci]===value)return;updateRecordPart(ri,ci,r=&gt;{r.modes[ci]=value;r.options[ci]=choices(r.letters[ci],state.sourceWords,value===COORD_DOUBLE);if(!r.options[ci].some(o=&gt;o.key===r.chosen[ci]))r.chosen[ci]=r.options[ci][0]?.key??null},&#x27;坐标类型&#x27;)}
+<span class="ln">213</span>
+<span class="ln">214</span>function renderBoard(){const grid=$(&#x27;boardGroups&#x27;);grid.replaceChildren();grid.style.setProperty(&#x27;--cols&#x27;,$(&#x27;groupsPerRow&#x27;).value);state.records.forEach((r,ri)=&gt;{const group=document.createElement(&#x27;section&#x27;);group.className=&#x27;node-group&#x27;;const title=document.createElement(&#x27;div&#x27;);title.className=&#x27;node-header&#x27;;title.textContent=`条目位置 ${fmt(ri+1)} 组`;group.append(title);const slots=document.createElement(&#x27;div&#x27;);slots.className=&#x27;slots&#x27;;for(let ci=0;ci&lt;4;ci++){const slot=document.createElement(&#x27;div&#x27;);slot.className=&#x27;slot&#x27;;const name=document.createElement(&#x27;div&#x27;);name.className=&#x27;slotname&#x27;;name.textContent=`${[&#x27;①&#x27;,&#x27;②&#x27;,&#x27;③&#x27;,&#x27;④&#x27;][ci]} ${codeFor(r,ci)}`;slot.append(name);const holder=document.createElement(&#x27;div&#x27;);holder.className=&#x27;nodeholder&#x27;;codeTokensByItem(ri,ci).forEach(t=&gt;{const btn=document.createElement(&#x27;button&#x27;);btn.type=&#x27;button&#x27;;btn.className=&#x27;node&#x27;;btn.textContent=t.text;btn.dataset.id=t.id;btn.title=`第${ri+1}组/第${ci+1}项/字符${t.ti+1}：${t.text}，来自${t.code}`;btn.setAttribute(&#x27;aria-label&#x27;,btn.title);holder.append(btn)});slot.append(holder);slots.append(slot)}group.append(slots);grid.append(group)})}
+<span class="ln">215</span>function renderAll(){const visible=loaded&amp;&amp;!!state.records.length;for(const k of [&#x27;resultPanel&#x27;,&#x27;exportPanel&#x27;,&#x27;pathPanel&#x27;])$(k).classList.toggle(&#x27;hidden&#x27;,!visible);refreshUndo();if(!visible)return;renderCards();$(&#x27;resultSummary&#x27;).textContent=`输入条目${state.records.length}个 · 编码项${state.records.length*4}个 · 原样字母${state.records.reduce((n,r)=&gt;n+r.chosen.filter(x=&gt;!x).length,0)}个 · 单字符节点${tokens.length}个`;$(&#x27;output&#x27;).textContent=currentText();renderBoard();renderRoutes()}</div></details></section><section class="card" id="s216"><h2>编码路径集合、路径编辑与显示</h2><p class="muted">原文件第 216–260 行，45 行；区块 06 / 18</p><h3>职责</h3><p>显示多路径、选择单条编辑、重复节点、插入、左右移动、删除与清空。</p><h3>输入与输出</h3><p>输入：节点 ID 与路径编辑操作；输出：有序路径数组，以及连续字符序列。</p><h3>人工审计解释</h3><div class="tip">显示集合与当前编辑路径分开管理，不自动对重复引用去重。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>renderRoutes()</code> <small>第 216 行</small>：生成多路径选项、统计、编辑器和箭头。</div><div class="func"><code>renderEditor()</code> <small>第 253 行</small>：为当前编辑路径生成逐次引用按钮。</div><div class="func"><code>highlightSelection()</code> <small>第 255 行</small>：定位某一单次引用在编码画布的原始节点。</div><div class="func"><code>createRoute()</code> <small>第 256 行</small>：增加空路径并设为当前编辑目标。</div><div class="func"><code>addNode()</code> <small>第 257 行</small>：按插入模式或末尾追加节点 ID。</div><div class="func"><code>editPath()</code> <small>第 258 行</small>：对已选引用执行调整并记录撤销历史。</div><div class="func"><code>deletePath()</code> <small>第 259 行</small>：删除当前路径并修正可视索引。</div><div class="func"><code>clearPaths()</code> <small>第 260 行</small>：确认后清空全部编码路径。</div></div><details><summary>展开查看本块完整原始源码（第 216–260 行）</summary><div class="code"><span class="ln">216</span>function renderRoutes(){
+<span class="ln">217</span> const tabs=$(&#x27;routeTabs&#x27;);tabs.replaceChildren();
+<span class="ln">218</span> visibleRoutes=new Set([...visibleRoutes].filter(i=&gt;i&gt;=0&amp;&amp;i&lt;state.paths.length));
+<span class="ln">219</span> state.paths.forEach((p,i)=&gt;{
+<span class="ln">220</span>  const wrap=document.createElement(&#x27;div&#x27;);wrap.className=&#x27;route-option&#x27;+(state.active===i?&#x27; editing&#x27;:&#x27;&#x27;);
+<span class="ln">221</span>  const toggle=document.createElement(&#x27;input&#x27;);toggle.type=&#x27;checkbox&#x27;;toggle.className=&#x27;show-route&#x27;;toggle.checked=visibleRoutes.has(i);toggle.title=`显示/隐藏路径${fmt(i+1)}`;
+<span class="ln">222</span>  toggle.setAttribute(&#x27;aria-label&#x27;,`显示路径${fmt(i+1)}`);
+<span class="ln">223</span>  toggle.onchange=()=&gt;{if(toggle.checked)visibleRoutes.add(i);else visibleRoutes.delete(i);renderRoutes()};
+<span class="ln">224</span>  const name=document.createElement(&#x27;button&#x27;);name.type=&#x27;button&#x27;;name.className=&#x27;route-edit&#x27;+(state.active===i?&#x27; active&#x27;:&#x27;&#x27;);
+<span class="ln">225</span>  name.textContent=`路径${fmt(i+1)} · ${p.length}次`;
+<span class="ln">226</span>  name.title=`将路径${fmt(i+1)}设为唯一编辑目标，并显示它`;
+<span class="ln">227</span>  name.onclick=()=&gt;{state.active=i;visibleRoutes.add(i);selectedIndex=-1;insertAfter=false;renderRoutes()};
+<span class="ln">228</span>  wrap.append(toggle,name);tabs.append(wrap)
+<span class="ln">229</span> });
+<span class="ln">230</span> if(!state.paths.length){const sp=document.createElement(&#x27;span&#x27;);sp.className=&#x27;status&#x27;;sp.textContent=&#x27;尚无路径，先点击“新建路径”。&#x27;;tabs.append(sp)}
+<span class="ln">231</span> const total=state.paths.reduce((n,p)=&gt;n+p.length,0);
+<span class="ln">232</span> $(&#x27;routeStatus&#x27;).textContent=`${state.paths.filter(p=&gt;p.length).length}条非空路径 · ${total}次字符引用 · 不去重 · 当前显示${visibleRoutes.size}条 · 编辑路径${state.active&gt;=0?fmt(state.active+1):&#x27;无&#x27;}`;
+<span class="ln">233</span> $(&#x27;routeOutput&#x27;).textContent=state.paths.filter(p=&gt;p.length).map(p=&gt;routeLine(p,state.paths.indexOf(p),true)).join(&#x27;\n&#x27;)||&#x27;尚无路径。&#x27;;
+<span class="ln">234</span> $(&#x27;compactOutput&#x27;).textContent=state.paths.filter(p=&gt;p.length).map(p=&gt;routeLine(p,state.paths.indexOf(p),false)).join(&#x27;\n&#x27;)||&#x27;尚无路径。&#x27;;
+<span class="ln">235</span> for(const key of [&#x27;copyPaths&#x27;,&#x27;copyCompact&#x27;,&#x27;downloadPaths&#x27;,&#x27;saveRules&#x27;])$(key).disabled=total===0;
+<span class="ln">236</span> for(const key of [&#x27;repeatLast&#x27;,&#x27;undoPoint&#x27;])$(key).disabled=state.active&lt;0||!state.paths[state.active]?.length;
+<span class="ln">237</span> $(&#x27;removePath&#x27;).disabled=state.active&lt;0;$(&#x27;clearPaths&#x27;).disabled=!state.paths.length;
+<span class="ln">238</span> const count=new Map();
+<span class="ln">239</span> state.paths.forEach((p,i)=&gt;{if(!visibleRoutes.has(i))return;p.forEach(id=&gt;{if(!count.has(id))count.set(id,[]);const arr=count.get(id),item=arr.find(x=&gt;x.i===i);if(item)item.n++;else arr.push({i,n:1})})});
+<span class="ln">240</span> document.querySelectorAll(&#x27;#boardGroups .node&#x27;).forEach(el=&gt;{
+<span class="ln">241</span>  const entries=count.get(el.dataset.id)||[];const old=el.querySelector(&#x27;.count&#x27;);old?.remove();
+<span class="ln">242</span>  el.querySelector(&#x27;.multi-counts&#x27;)?.remove();
+<span class="ln">243</span>  el.classList.toggle(&#x27;used&#x27;,entries.length&gt;0);el.classList.toggle(&#x27;route-shown&#x27;,entries.length&gt;0);
+<span class="ln">244</span>  el.classList.toggle(&#x27;active&#x27;,entries.some(e=&gt;e.i===state.active));
+<span class="ln">245</span>  if(entries.length){
+<span class="ln">246</span>   const holder=document.createElement(&#x27;span&#x27;);holder.className=&#x27;multi-counts&#x27;;
+<span class="ln">247</span>   entries.forEach(({i,n})=&gt;{const tag=document.createElement(&#x27;span&#x27;);tag.className=&#x27;multi-count&#x27;;tag.textContent=`${fmt(i+1)}×${n}`;tag.style.background=colors[i%colors.length];holder.append(tag)});
+<span class="ln">248</span>   el.append(holder)
+<span class="ln">249</span>  }
+<span class="ln">250</span> });
+<span class="ln">251</span> renderEditor();requestDraw();refreshUndo()
+<span class="ln">252</span>}
+<span class="ln">253</span>function renderEditor(){const root=$(&#x27;pathEditor&#x27;);root.replaceChildren();const p=state.paths[state.active];const valid=!!p&amp;&amp;selectedIndex&gt;=0&amp;&amp;selectedIndex&lt;p.length;const editors=[&#x27;moveLeft&#x27;,&#x27;moveRight&#x27;,&#x27;duplicateOne&#x27;,&#x27;deleteOne&#x27;];editors.forEach(k=&gt;$(k).disabled=!valid);$(&#x27;moveLeft&#x27;).disabled=!valid||selectedIndex===0;$(&#x27;moveRight&#x27;).disabled=!valid||selectedIndex&gt;=p.length-1;$(&#x27;insertMode&#x27;).disabled=!valid;$(&#x27;insertMode&#x27;).textContent=`在选中项后插入：${insertAfter?&#x27;开&#x27;:&#x27;关&#x27;}`;
+<span class="ln">254</span> if(!p){root.textContent=&#x27;空白视图：没有选中路径。选择任一路径后继续编辑。&#x27;;highlightSelection();return}if(!p.length){root.textContent=&#x27;路径为空，请点选字符节点。&#x27;;return}p.forEach((id,i)=&gt;{const t=token(id),btn=document.createElement(&#x27;button&#x27;);btn.className=&#x27;path-item&#x27;+(i===selectedIndex?&#x27; selected&#x27;:&#x27;&#x27;);btn.type=&#x27;button&#x27;;btn.title=t?`第${t.ri+1}组、第${t.ci+1}项、第${t.ti+1}字符（${t.code}）`:&#x27;未找到来源&#x27;;const num=document.createElement(&#x27;span&#x27;);num.className=&#x27;path-index&#x27;;num.textContent=String(i+1)+&#x27; &#x27;;btn.append(num,document.createTextNode(tokenText(id)));btn.onclick=()=&gt;{selectedIndex=i;insertAfter=false;renderEditor();highlightSelection()};root.append(btn)});highlightSelection()}
+<span class="ln">255</span>function highlightSelection(){document.querySelectorAll(&#x27;#boardGroups .node&#x27;).forEach(el=&gt;el.classList.remove(&#x27;focused&#x27;));const id=state.paths[state.active]?.[selectedIndex];const t=id?token(id):null;$(&#x27;selectionInfo&#x27;).textContent=t?`第${t.ri+1}组 · 第${t.ci+1}项 · 坐标内字符${t.ti+1} · 映射编码 ${t.code} · 节点 ${t.id}`:&#x27;点击路径中的字符，查看它的原始来源。&#x27;;if(t){const el=[...document.querySelectorAll(&#x27;#boardGroups .node&#x27;)].find(e=&gt;e.dataset.id===t.id);el?.classList.add(&#x27;focused&#x27;)}}
+<span class="ln">256</span>function createRoute(){checkpoint();state.paths.push([]);state.active=state.paths.length-1;visibleRoutes.add(state.active);selectedIndex=-1;insertAfter=false;renderRoutes()}
+<span class="ln">257</span>function addNode(id,skipCheckpoint=false,forceAppend=false){if(!token(id))return;if(!skipCheckpoint)checkpoint();if(state.active&lt;0||!state.paths[state.active]){notify(&#x27;请先通过路径名称选择编辑目标，或新建一条路径。&#x27;);return}const p=state.paths[state.active];if(!forceAppend&amp;&amp;insertAfter&amp;&amp;selectedIndex&gt;=0&amp;&amp;selectedIndex&lt;p.length){p.splice(selectedIndex+1,0,id);selectedIndex++;}else{p.push(id);selectedIndex=p.length-1}renderRoutes()}
+<span class="ln">258</span>function editPath(fn){const p=state.paths[state.active];if(!p||selectedIndex&lt;0||selectedIndex&gt;=p.length)return;checkpoint();fn(p);selectedIndex=Math.min(selectedIndex,p.length-1);renderRoutes()}
+<span class="ln">259</span>function deletePath(){if(state.active&lt;0)return;checkpoint();const deleted=state.active;state.paths.splice(deleted,1);visibleRoutes=new Set([...visibleRoutes].filter(i=&gt;i!==deleted).map(i=&gt;i&gt;deleted?i-1:i));state.active=state.paths.length?Math.min(deleted,state.paths.length-1):-1;selectedIndex=-1;insertAfter=false;renderRoutes()}
+<span class="ln">260</span>function clearPaths(){if(!state.paths.length)return;if(!confirm(&#x27;确实清空所有路径吗？可以通过“撤销”重建。&#x27;))return;checkpoint();state.paths=[];state.active=-1;visibleRoutes.clear();selectedIndex=-1;renderRoutes()}</div></details></section><section class="card" id="s261"><h2>编码画布绘图与文件复制</h2><p class="muted">原文件第 261–294 行，34 行；区块 07 / 18</p><h3>职责</h3><p>SVG 箭头、拖拽连线、键盘点击节点、下载文件与复制文本。</p><h3>输入与输出</h3><p>输入：路径和当前节点空间位置；输出：视觉连线及本地生成的 TXT/JSON 下载。</p><h3>人工审计解释</h3><div class="tip">SVG 仅作可视化；实际路径为 ID 数组。单击与拖拽共用节点逻辑。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>requestDraw()</code> <small>第 262 行</small>：合并多个绘图请求，在下一帧绘制 SVG。</div><div class="func"><code>drawLines()</code> <small>第 263 行</small>：读取节点实际位置并绘制可见路径的线和箭头。</div><div class="func"><code>idAt()</code> <small>第 284 行</small>：从屏幕位置寻找对应节点 ID。</div><div class="func"><code>posAt()</code> <small>第 285 行</small>：把鼠标事件坐标转换为画布相对位置。</div><div class="func"><code>endStroke()</code> <small>第 288 行</small>：完成拖拽，将起点和终点按规则写入路径。</div><div class="func"><code>save()</code> <small>第 292 行</small>：使用 Blob 和 object URL 触发本地文件下载。</div><div class="func"><code>copy()</code> <small>第 293 行</small>：复制文本到剪贴板；失败则尝试传统复制方式。</div><div class="func"><code>selectedPathText()</code> <small>第 294 行</small>：输出路径文本（保留换行，决定是否插入空格）。</div></div><details><summary>展开查看本块完整原始源码（第 261–294 行）</summary><div class="code"><span class="ln">261</span>const svgNS=&#x27;http://www.w3.org/2000/svg&#x27;;function svg(tag,attrs){const el=document.createElementNS(svgNS,tag);Object.entries(attrs||{}).forEach(([k,v])=&gt;el.setAttribute(k,String(v)));return el}
+<span class="ln">262</span>function requestDraw(){if(drawPending)return;drawPending=true;requestAnimationFrame(()=&gt;{drawPending=false;drawLines()})}
+<span class="ln">263</span>function drawLines(){
+<span class="ln">264</span> const root=$(&#x27;pathOverlay&#x27;),stage=$(&#x27;boardStage&#x27;);root.replaceChildren();if(!loaded)return;
+<span class="ln">265</span> const r=stage.getBoundingClientRect(),width=stage.offsetWidth,height=stage.offsetHeight;
+<span class="ln">266</span> root.setAttribute(&#x27;viewBox&#x27;,`0 0 ${width} ${height}`);root.setAttribute(&#x27;width&#x27;,width);root.setAttribute(&#x27;height&#x27;,height);
+<span class="ln">267</span> const pos=new Map();document.querySelectorAll(&#x27;#boardGroups .node&#x27;).forEach(node=&gt;{const b=node.getBoundingClientRect();pos.set(node.dataset.id,{x:b.left+b.width/2-r.left,y:b.top+b.height/2-r.top})});
+<span class="ln">268</span> const defs=svg(&#x27;defs&#x27;);const paths=[...visibleRoutes].filter(i=&gt;state.paths[i]).sort((a,b)=&gt;a-b);
+<span class="ln">269</span> paths.forEach(i=&gt;{const marker=svg(&#x27;marker&#x27;,{id:`arrow-${i}`,viewBox:&#x27;0 0 10 10&#x27;,refX:8,refY:5,markerWidth:5,markerHeight:5,orient:&#x27;auto&#x27;});marker.append(svg(&#x27;path&#x27;,{d:&#x27;M 0 0 L 10 5 L 0 10 z&#x27;,fill:colors[i%colors.length]}));defs.append(marker)});root.append(defs);
+<span class="ln">270</span> paths.forEach((i,displayIndex)=&gt;{
+<span class="ln">271</span>  const p=state.paths[i],color=colors[i%colors.length];
+<span class="ln">272</span>  for(let j=1;j&lt;p.length;j++){
+<span class="ln">273</span>   const a=pos.get(p[j-1]),b=pos.get(p[j]);if(!a||!b)continue;
+<span class="ln">274</span>   const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
+<span class="ln">275</span>   if(len&lt;1){const off=(j%4)*5+displayIndex*4;root.append(svg(&#x27;path&#x27;,{d:`M ${a.x+10} ${a.y-12-off} C ${a.x+38+off} ${a.y-42-off},${a.x+46+off} ${a.y+28+off},${a.x+10} ${a.y+11+off}`,fill:&#x27;none&#x27;,stroke:color,&#x27;stroke-width&#x27;:2.2,&#x27;marker-end&#x27;:`url(#arrow-${i})`,opacity:.96}))}
+<span class="ln">276</span>   else{const off=(displayIndex-(paths.length-1)/2)*6;
+<span class="ln">277</span>    const ox=-dy/len*off,oy=dx/len*off,q=Math.min(13,len/3);
+<span class="ln">278</span>    root.append(svg(&#x27;line&#x27;,{x1:a.x+dx/len*q+ox,y1:a.y+dy/len*q+oy,x2:b.x-dx/len*q+ox,y2:b.y-dy/len*q+oy,stroke:color,&#x27;stroke-width&#x27;:2.3,&#x27;marker-end&#x27;:`url(#arrow-${i})`,opacity:1}))
+<span class="ln">279</span>   }
+<span class="ln">280</span>  }
+<span class="ln">281</span> });
+<span class="ln">282</span> if(drag){const a=pos.get(drag.startId);if(a)root.append(svg(&#x27;line&#x27;,{x1:a.x,y1:a.y,x2:drag.x,y2:drag.y,stroke:&#x27;#2563bd&#x27;,&#x27;stroke-width&#x27;:2,&#x27;stroke-dasharray&#x27;:&#x27;5 5&#x27;}))}
+<span class="ln">283</span>}
+<span class="ln">284</span>function idAt(x,y){const el=document.elementFromPoint(x,y)?.closest?.(&#x27;[data-id]&#x27;);return el&amp;&amp;$(&#x27;boardStage&#x27;).contains(el)?el.dataset.id:null}
+<span class="ln">285</span>function posAt(e){const r=$(&#x27;boardStage&#x27;).getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+<span class="ln">286</span>$(&#x27;boardStage&#x27;).addEventListener(&#x27;pointerdown&#x27;,e=&gt;{if(e.pointerType===&#x27;mouse&#x27;&amp;&amp;e.button!==0)return;const el=e.target.closest?.(&#x27;[data-id]&#x27;);if(!el||drag||state.active&lt;0||!state.paths[state.active])return;e.preventDefault();drag={pointerId:e.pointerId,startId:el.dataset.id,...posAt(e)};try{$(&#x27;boardStage&#x27;).setPointerCapture(e.pointerId)}catch{}requestDraw()});
+<span class="ln">287</span>$(&#x27;boardStage&#x27;).addEventListener(&#x27;pointermove&#x27;,e=&gt;{if(!drag||drag.pointerId!==e.pointerId)return;Object.assign(drag,posAt(e));requestDraw()});
+<span class="ln">288</span>function endStroke(e){if(!drag||e.pointerId!==drag.pointerId)return;const start=drag.startId,end=idAt(e.clientX,e.clientY);drag=null;try{if($(&#x27;boardStage&#x27;).hasPointerCapture(e.pointerId))$(&#x27;boardStage&#x27;).releasePointerCapture(e.pointerId)}catch{}if(e.type===&#x27;pointerup&#x27;&amp;&amp;end){checkpoint();if(end!==start&amp;&amp;state.paths[state.active]?.at(-1)!==start)addNode(start,true);addNode(end,true)}requestDraw()}
+<span class="ln">289</span>$(&#x27;boardStage&#x27;).addEventListener(&#x27;pointerup&#x27;,endStroke);$(&#x27;boardStage&#x27;).addEventListener(&#x27;pointercancel&#x27;,endStroke);
+<span class="ln">290</span>$(&#x27;boardStage&#x27;).addEventListener(&#x27;click&#x27;,e=&gt;{if(e.detail!==0)return;const node=e.target.closest?.(&#x27;[data-id]&#x27;);if(node)addNode(node.dataset.id)});
+<span class="ln">291</span>$(&#x27;boardScroll&#x27;).addEventListener(&#x27;scroll&#x27;,requestDraw);window.addEventListener(&#x27;resize&#x27;,requestDraw);
+<span class="ln">292</span>function save(name,body,mime){const blob=new Blob([body],{type:mime}),uri=URL.createObjectURL(blob),a=document.createElement(&#x27;a&#x27;);a.href=uri;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=&gt;URL.revokeObjectURL(uri),1500)}
+<span class="ln">293</span>async function copy(txt,id){try{if(!navigator.clipboard?.writeText)throw Error(&#x27;clipboard&#x27;);await navigator.clipboard.writeText(txt)}catch{const el=document.createElement(&#x27;textarea&#x27;);el.value=txt;el.style.position=&#x27;fixed&#x27;;el.style.opacity=&#x27;0&#x27;;document.body.append(el);el.select();let ok=document.execCommand(&#x27;copy&#x27;);el.remove();if(!ok){$(id).textContent=&#x27;复制失败，请手动复制文字。&#x27;;return}}$(id).textContent=&#x27;已复制&#x27;}
+<span class="ln">294</span>function selectedPathText(spaced){return state.paths.map(p=&gt;p.map(tokenText).join(spaced?&#x27; &#x27;:&#x27;&#x27; )).join(&#x27;\n&#x27;)}</div></details></section><section class="card" id="s295"><h2>编码导出、摘要与工程兼容</h2><p class="muted">原文件第 295–315 行，21 行；区块 08 / 18</p><h3>职责</h3><p>mapping、paths、workspace 三种主要导出；SHA-256 摘要；旧版工程及路径规则导入。</p><h3>输入与输出</h3><p>输入：state 和导入 JSON；输出：导出对象，或校验后恢复编码状态。</p><h3>人工审计解释</h3><div class="tip">摘要用于一致性验证，不是加密或身份认证；工作区导出包含明文输入。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>exportCodeJson()</code> <small>第 295 行</small>：导出参考文本、模式和四项映射，不包含目标全文。</div><div class="func"><code>sha256()</code> <small>第 296 行</small>：内置纯 JavaScript SHA-256，用于完整性摘要。</div><div class="func"><code>layoutPayload()</code> <small>第 297 行</small>：构造布局摘要的输入（包含目标与所有节点）。</div><div class="func"><code>layoutHash()</code> <small>第 298 行</small>：计算现行布局 SHA-256 摘要。</div><div class="func"><code>oldV2LayoutHash()</code> <small>第 299 行</small>：兼容旧版 V2 坐标规则的布局摘要。</div><div class="func"><code>isLegacyModes()</code> <small>第 300 行</small>：判断当前全体条目是否仍按旧版固定单双模式。</div><div class="func"><code>legacyLayoutHash()</code> <small>第 301 行</small>：旧版 FNV 风格布局签名，兼容早期路径文件。</div><div class="func"><code>pathsForExport()</code> <small>第 302 行</small>：复制编码路径 ID 数组，供导出。</div><div class="func"><code>exportRules()</code> <small>第 303 行</small>：保存通用路径 JSON（含布局摘要和节点数量）。</div><div class="func"><code>projectPayload()</code> <small>第 304 行</small>：生成完整工程明文主体。</div><div class="func"><code>exportProject()</code> <small>第 305 行</small>：确认明文风险后导出工程及摘要。</div><div class="func"><code>validatePaths()</code> <small>第 306 行</small>：检验路径数量、长度和节点 ID 的合法性。</div><div class="func"><code>loadProject()</code> <small>第 307 行</small>：验证工程结构及摘要，恢复源码状态和路径。</div><div class="func"><code>loadRules()</code> <small>第 308 行</small>：校验路径布局和兼容性后导入规则。</div></div><details><summary>展开查看本块完整原始源码（第 295–315 行）</summary><div class="code"><span class="ln">295</span>function exportCodeJson(){const obj={version:3,ruleVersion:COORD_RULE_VERSION,sourceText:state.sourceText,sourceWordCount:state.sourceWords.length,records:state.records.map((r,i)=&gt;({index:i+1,modes:[...r.modes],code:r.chosen.map((key,j)=&gt;{const opt=r.options[j].find(x=&gt;x.key===key);return !opt?r.letters[j]:r.modes[j]===COORD_DOUBLE?[opt.wi,opt.ci]:[opt.wi]})}))};save(&#x27;mapping.json&#x27;,JSON.stringify(obj,null,2)+&#x27;\n&#x27;,&#x27;application/json;charset=utf-8&#x27;)}
+<span class="ln">296</span>function sha256(ascii){let bytes=Array.from(new TextEncoder().encode(ascii)),len=bytes.length*8;bytes.push(128);while(bytes.length%64!==56)bytes.push(0);const hi=Math.floor(len/2**32),lo=len&gt;&gt;&gt;0;for(let i=3;i&gt;=0;i--)bytes.push((hi&gt;&gt;&gt;i*8)&amp;255);for(let i=3;i&gt;=0;i--)bytes.push((lo&gt;&gt;&gt;i*8)&amp;255);let h=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];const k=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];const rotr=(n,x)=&gt;(x&gt;&gt;&gt;n)|(x&lt;&lt;(32-n));for(let offset=0;offset&lt;bytes.length;offset+=64){const w=new Array(64);for(let i=0;i&lt;16;i++)w[i]=(bytes[offset+4*i]&lt;&lt;24)|(bytes[offset+4*i+1]&lt;&lt;16)|(bytes[offset+4*i+2]&lt;&lt;8)|bytes[offset+4*i+3];for(let i=16;i&lt;64;i++){const s0=rotr(7,w[i-15])^rotr(18,w[i-15])^(w[i-15]&gt;&gt;&gt;3),s1=rotr(17,w[i-2])^rotr(19,w[i-2])^(w[i-2]&gt;&gt;&gt;10);w[i]=(w[i-16]+s0+w[i-7]+s1)|0}let [a,b,c,d,e,f,g,z]=h;for(let i=0;i&lt;64;i++){const S1=rotr(6,e)^rotr(11,e)^rotr(25,e),ch=(e&amp;f)^(~e&amp;g),t1=(z+S1+ch+k[i]+w[i])|0,S0=rotr(2,a)^rotr(13,a)^rotr(22,a),maj=(a&amp;b)^(a&amp;c)^(b&amp;c),t2=(S0+maj)|0;z=g;g=f;f=e;e=(d+t1)|0;d=c;c=b;b=a;a=(t1+t2)|0}h=h.map((v,i)=&gt;(v+[a,b,c,d,e,f,g,z][i])|0)}return h.map(x=&gt;(x&gt;&gt;&gt;0).toString(16).padStart(8,&#x27;0&#x27;)).join(&#x27;&#x27;)}
+<span class="ln">297</span>function layoutPayload(ruleVersion=COORD_RULE_VERSION){return {ruleVersion,tokenizer:&#x27;ascii-words-v1&#x27;,sourceText:state.sourceText,targets:state.targets,chosen:state.records.map(r=&gt;r.chosen),modes:state.records.map(r=&gt;r.modes),nodes:tokens.map(t=&gt;[t.id,t.text,t.code])}}
+<span class="ln">298</span>function layoutHash(ruleVersion=COORD_RULE_VERSION){return sha256(JSON.stringify(layoutPayload(ruleVersion)))}
+<span class="ln">299</span>function oldV2LayoutHash(){return sha256(JSON.stringify({ruleVersion:&#x27;mixed-first-second-third-fourth-v2&#x27;,tokenizer:&#x27;ascii-words-v1&#x27;,sourceText:state.sourceText,targets:state.targets,chosen:state.records.map(r=&gt;r.chosen),nodes:tokens.map(t=&gt;[t.id,t.text,t.code])}))}
+<span class="ln">300</span>function isLegacyModes(){return state.records.every(r=&gt;r.modes.every((m,i)=&gt;m===LEGACY_COORD_MODES[i]))}
+<span class="ln">301</span>function legacyLayoutHash(){const data=tokens.map(t=&gt;`${t.ri+1}.${t.ci+1}.${t.ti+1}=${t.text}`).join(&#x27;|&#x27;);let h=2166136261;for(let i=0;i&lt;data.length;i++)h=Math.imul(h^data.charCodeAt(i),16777619)&gt;&gt;&gt;0;return h.toString(16).padStart(8,&#x27;0&#x27;)}
+<span class="ln">302</span>function pathsForExport(){return state.paths.map(p=&gt;[...p])}
+<span class="ln">303</span>function exportRules(){const obj={type:TYPE_PATHS,version:3,ruleVersion:COORD_RULE_VERSION,layoutHash:layoutHash(),nodeCount:tokens.length,paths:pathsForExport()};save(&#x27;paths.json&#x27;,JSON.stringify(obj,null,2)+&#x27;\n&#x27;,&#x27;application/json;charset=utf-8&#x27;);notify(&#x27;路径规则已保存；不包含输入条目和参考文本。&#x27;)}
+<span class="ln">304</span>function projectPayload(){return {type:TYPE_WORKSPACE,version:3,ruleVersion:COORD_RULE_VERSION,tokenizer:&#x27;ascii-words-v1&#x27;,sourceText:state.sourceText,targetText:state.targetText,chosen:state.records.map(r=&gt;[...r.chosen]),modes:state.records.map(r=&gt;[...r.modes]),paths:pathsForExport(),active:state.active,layoutHash:layoutHash()}}
+<span class="ln">305</span>function exportProject(){if(!loaded){report(&#x27;draftMessage&#x27;,&#x27;请先生成编码。&#x27;,&#x27;error&#x27;);return}if(dirty){report(&#x27;draftMessage&#x27;,&#x27;当前输入草稿尚未应用。为防止误保存旧版本，请先应用新输入，或将草稿改回已生成版本。&#x27;,&#x27;error&#x27;);return}if(!confirm(&#x27;完整工程包含输入条目和参考文本，可能是敏感材料。确定将明文 JSON 保存到本地吗？&#x27;))return;const content=projectPayload(),obj={...content,integrity:{algorithm:&#x27;SHA-256&#x27;,digest:sha256(JSON.stringify(content))}};save(&#x27;workspace.json&#x27;,JSON.stringify(obj,null,2)+&#x27;\n&#x27;,&#x27;application/json;charset=utf-8&#x27;);notify(&#x27;完整工程已导出。请严格保护其中的明文输入。&#x27;)}
+<span class="ln">306</span>function validatePaths(paths,allowEmpty=true){if(!Array.isArray(paths)||paths.length&gt;10000)throw Error(&#x27;路径格式或数量不合法&#x27;);const ids=new Set(tokens.map(t=&gt;t.id));let total=0;return paths.map(p=&gt;{if(!Array.isArray(p)||p.length&gt;100000)throw Error(&#x27;路径长度不合法&#x27;);total+=p.length;if(total&gt;500000)throw Error(&#x27;路径引用总数超过50万&#x27;);if(!p.every(x=&gt;typeof x===&#x27;string&#x27;&amp;&amp;ids.has(x)))throw Error(&#x27;包含无效节点 ID&#x27;);return [...p]})}
+<span class="ln">307</span>async function loadProject(file){if(file.size&gt;8*1024*1024)throw Error(&#x27;工程文件超出8MB&#x27;);const obj=JSON.parse(await file.text());const older=obj.version===2&amp;&amp;obj.ruleVersion===&#x27;mixed-first-second-third-fourth-v2&#x27;,current=obj.version===3&amp;&amp;[COORD_RULE_VERSION,COORD_RULE_LEGACY].includes(obj.ruleVersion);if(![TYPE_WORKSPACE,&#x27;mixed-coordinate-character-project&#x27;].includes(obj.type)||(!older&amp;&amp;!current)||obj.tokenizer!==&#x27;ascii-words-v1&#x27;)throw Error(&#x27;不兼容的工程版本或字母规则。&#x27;);const {integrity,...payload}=obj;if(!integrity||integrity.algorithm!==&#x27;SHA-256&#x27;||integrity.digest!==sha256(JSON.stringify(payload)))throw Error(&#x27;工程摘要不匹配，文件可能不完整或已被改动&#x27;);if(typeof obj.sourceText!==&#x27;string&#x27;||typeof obj.targetText!==&#x27;string&#x27;||obj.sourceText.length&gt;100000||obj.targetText.length&gt;50000)throw Error(&#x27;输入字段不合法&#x27;);const ws=wordsOf(obj.sourceText),tar=targetsOf(obj.targetText);if(ws.length&gt;5000||tar.length&gt;500||tar.some(x=&gt;!/^[a-z]+$/.test(x))||!tar.length)throw Error(&#x27;目标或参考词数量不合法&#x27;);if(!Array.isArray(obj.chosen)||obj.chosen.length!==tar.length||obj.chosen.some(x=&gt;!Array.isArray(x)||x.length!==4))throw Error(&#x27;坐标选项数量不合法&#x27;);if(current&amp;&amp;(!Array.isArray(obj.modes)||obj.modes.length!==tar.length||!obj.modes.every(validModes)))throw Error(&#x27;坐标类型配置无效&#x27;);const modes=current?obj.modes:tar.map(()=&gt;[...LEGACY_COORD_MODES]);const rec=recordsFor(ws,tar,obj.chosen,modes);if(rec.some((r,i)=&gt;r.chosen.some((x,j)=&gt;x!==obj.chosen[i][j])))throw Error(&#x27;源坐标选择不合法&#x27;);const old=state;state={sourceText:obj.sourceText,targetText:obj.targetText,sourceWords:ws,targets:tar,records:rec,paths:[],active:-1};rebuildTokens();try{if(obj.layoutHash!==(older?oldV2LayoutHash():layoutHash(obj.ruleVersion)))throw Error(&#x27;工程布局摘要不匹配&#x27;);state.paths=validatePaths(obj.paths);state.active=Number.isInteger(obj.active)?Math.max(-1,Math.min(obj.active,state.paths.length-1)):-1}catch(e){state=old;rebuildTokens();throw e}if(loaded){history.push({...snap(),sourceText:old.sourceText,targetText:old.targetText,chosen:old.records.map(r=&gt;r.chosen),modes:old.records.map(r=&gt;r.modes),paths:old.paths.map(p=&gt;[...p]),active:old.active});if(history.length&gt;100)history.shift()}future=[];selectedIndex=-1;insertAfter=false;defaultVisibility();loaded=true;$(&#x27;source&#x27;).value=state.sourceText;$(&#x27;targets&#x27;).value=state.targetText;renderSource();refreshDraft();renderAll();notify(&#x27;工程已导入并验证摘要；可继续编辑。&#x27;)}
+<span class="ln">308</span>async function loadRules(file){if(file.size&gt;4*1024*1024)throw Error(&#x27;路径规则文件超出4MB&#x27;);if(!loaded)throw Error(&#x27;请先生成对应编码，再导入路径文件&#x27;);const obj=JSON.parse(await file.text());let converted;if([TYPE_PATHS,&#x27;mixed-coordinate-character-paths&#x27;].includes(obj.type)&amp;&amp;obj.version===3){if(![COORD_RULE_VERSION,COORD_RULE_LEGACY].includes(obj.ruleVersion)||obj.layoutHash!==layoutHash(obj.ruleVersion)||obj.nodeCount!==tokens.length)throw Error(&#x27;编码来源、坐标类型或布局不同，拒绝导入&#x27;);converted=obj.paths}else if(obj.type===&#x27;mixed-coordinate-character-paths&#x27;&amp;&amp;obj.version===2){if(!isLegacyModes()||obj.ruleVersion!==&#x27;mixed-first-second-third-fourth-v2&#x27;||obj.layoutHash!==oldV2LayoutHash()||obj.nodeCount!==tokens.length)throw Error(&#x27;旧版路径要求全部词使用旧坐标类型 ①④双、②③单，且布局完全一致&#x27;);converted=obj.paths}else if(obj.type===&#x27;mixed-coordinate-character-free-paths&#x27;&amp;&amp;obj.version===1){if(!isLegacyModes()||state.targets.some(w=&gt;w.length&gt;=5&amp;&amp;w[3]!==w[w.length-1]))throw Error(&#x27;旧V1路径与当前坐标类型或第四字母规则不兼容&#x27;);if(obj.layoutSignature!==legacyLayoutHash()||obj.nodeCount!==tokens.length)throw Error(&#x27;旧版规则与当前字符布局不同&#x27;);converted=obj.paths.map(p=&gt;{if(!Array.isArray(p))throw Error(&#x27;路径格式错误&#x27;);return p.map(x=&gt;Number.isInteger(x)&amp;&amp;x&gt;=1&amp;&amp;x&lt;=tokens.length?tokens[x-1].id:null)})}else throw Error(&#x27;不支持的路径规则版本&#x27;);const next=validatePaths(converted);checkpoint();state.paths=next;state.active=state.paths.length?0:-1;selectedIndex=-1;insertAfter=false;defaultVisibility();renderRoutes();notify(&#x27;路径规则已导入并完成布局验证。&#x27;)}
+<span class="ln">309</span>$(&#x27;source&#x27;).addEventListener(&#x27;input&#x27;,()=&gt;{renderSource();refreshDraft()});$(&#x27;targets&#x27;).addEventListener(&#x27;input&#x27;,refreshDraft);$(&#x27;generate&#x27;).addEventListener(&#x27;click&#x27;,generate);$(&#x27;clearTargets&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;{$(&#x27;targets&#x27;).value=&#x27;&#x27;;refreshDraft()});$(&#x27;undo&#x27;).addEventListener(&#x27;click&#x27;,undo);$(&#x27;redo&#x27;).addEventListener(&#x27;click&#x27;,redo);
+<span class="ln">310</span>$(&#x27;newPath&#x27;).addEventListener(&#x27;click&#x27;,createRoute);$(&#x27;repeatLast&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;{const id=state.paths[state.active]?.at(-1);if(id)addNode(id,false,true)});$(&#x27;undoPoint&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;{const p=state.paths[state.active];if(!p?.length)return;checkpoint();p.pop();selectedIndex=Math.min(selectedIndex,p.length-1);renderRoutes()});$(&#x27;removePath&#x27;).addEventListener(&#x27;click&#x27;,deletePath);$(&#x27;clearPaths&#x27;).addEventListener(&#x27;click&#x27;,clearPaths);
+<span class="ln">311</span>$(&#x27;moveLeft&#x27;).onclick=()=&gt;editPath(p=&gt;{[p[selectedIndex-1],p[selectedIndex]]=[p[selectedIndex],p[selectedIndex-1]];selectedIndex--});$(&#x27;moveRight&#x27;).onclick=()=&gt;editPath(p=&gt;{[p[selectedIndex+1],p[selectedIndex]]=[p[selectedIndex],p[selectedIndex+1]];selectedIndex++});$(&#x27;duplicateOne&#x27;).onclick=()=&gt;editPath(p=&gt;{p.splice(selectedIndex+1,0,p[selectedIndex]);selectedIndex++});$(&#x27;deleteOne&#x27;).onclick=()=&gt;editPath(p=&gt;p.splice(selectedIndex,1));$(&#x27;insertMode&#x27;).onclick=()=&gt;{insertAfter=!insertAfter;renderEditor()};$(&#x27;groupsPerRow&#x27;).onchange=()=&gt;{renderBoard();renderRoutes()};
+<span class="ln">312</span>$(&#x27;copyCode&#x27;).onclick=()=&gt;copy(currentText(),&#x27;copyCodeState&#x27;);$(&#x27;downloadCode&#x27;).onclick=()=&gt;save(&#x27;coordinates.txt&#x27;,currentText()+&#x27;\n&#x27;,&#x27;text/plain;charset=utf-8&#x27;);$(&#x27;downloadCodeJson&#x27;).onclick=exportCodeJson;
+<span class="ln">313</span>$(&#x27;copyPaths&#x27;).onclick=()=&gt;copy(state.paths.filter(p=&gt;p.length).map((p,i)=&gt;routeLine(p,i,true)).join(&#x27;\n&#x27;),&#x27;pathsMessage&#x27;);$(&#x27;copyCompact&#x27;).onclick=()=&gt;copy(selectedPathText(false),&#x27;pathsMessage&#x27;);$(&#x27;downloadPaths&#x27;).onclick=()=&gt;save(&#x27;sequences.txt&#x27;,state.paths.map((p,i)=&gt;routeLine(p,i,true)).join(&#x27;\n&#x27;)+&#x27;\n\n&#x27;+selectedPathText(false)+&#x27;\n&#x27;,&#x27;text/plain;charset=utf-8&#x27;);$(&#x27;saveRules&#x27;).onclick=exportRules;$(&#x27;exportProject&#x27;).onclick=exportProject;
+<span class="ln">314</span>$(&#x27;importProject&#x27;).onclick=()=&gt;$(&#x27;projectFile&#x27;).click();$(&#x27;importRules&#x27;).onclick=()=&gt;$(&#x27;rulesFile&#x27;).click();$(&#x27;projectFile&#x27;).onchange=async e=&gt;{const f=e.target.files[0];e.target.value=&#x27;&#x27;;if(!f)return;try{await loadProject(f)}catch(err){report(&#x27;draftMessage&#x27;,&#x27;导入失败：&#x27;+err.message,&#x27;error&#x27;)}};$(&#x27;rulesFile&#x27;).onchange=async e=&gt;{const f=e.target.files[0];e.target.value=&#x27;&#x27;;if(!f)return;try{await loadRules(f)}catch(err){notify(&#x27;导入失败：&#x27;+err.message)}};
+<span class="ln">315</span>if(window.innerWidth&lt;760)$(&#x27;groupsPerRow&#x27;).value=&#x27;1&#x27;;refreshDraft();renderSource();refreshUndo();</div></details></section><section class="card" id="s316"><h2>重建模式初始化和界面折叠</h2><p class="muted">原文件第 316–355 行，40 行；区块 09 / 18</p><h3>职责</h3><p>恢复工作区初始化、字符串转义、未被当前业务调用的密码衍生辅助函数、面板折叠和模式切换。</p><h3>输入与输出</h3><p>输入：界面操作与初始化状态；输出：重建区显隐与 UI 折叠。</p><h3>人工审计解释</h3><div class="tip">密码衍生工具定义存在，但当前模式中没有调用；不能据此认定导出文件被加密。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>v23Status()</code> <small>第 322 行</small>：显示重建模块的状态文本。</div><div class="func"><code>v23SafeText()</code> <small>第 323 行</small>：转义 HTML 特殊字符；当前主数据流未调用。</div><div class="func"><code>v23Bytes()</code> <small>第 324 行</small>：文本转 UTF-8 字节；仅供辅助密码函数。</div><div class="func"><code>v23B64()</code> <small>第 325 行</small>：字节转 Base64；当前核心数据流未使用。</div><div class="func"><code>v23FromB64()</code> <small>第 326 行</small>：Base64 转字节；当前核心数据流未使用。</div><div class="func"><code>v23DerivePassword()</code> <small>第 327 行</small>：通过 PBKDF2-SHA256 派生字节；当前导出并未调用，不表示文件被加密。</div><div class="func"><code>v23SetupFolds()</code> <small>第 332 行</small>：将主要面板改造成可折叠结构。</div><div class="func"><code>v23SetMode()</code> <small>第 348 行</small>：在编码和重建两个界面之间切换显示。</div></div><details><summary>展开查看本块完整原始源码（第 316–355 行）</summary><div class="code"><span class="ln">316</span>&lt;/script&gt;
+<span class="ln">317</span>&lt;script&gt;
+<span class="ln">318</span>&#x27;use strict&#x27;;
+<span class="ln">319</span>const te23=new TextEncoder(), td23=new TextDecoder();
+<span class="ln">320</span>const v23={segments:[], importEntries:[], mode:&#x27;encode&#x27;};
+<span class="ln">321</span>
+<span class="ln">322</span>function v23Status(id,msg){$(id).textContent=msg}
+<span class="ln">323</span>function v23SafeText(v){return String(v).replace(/[&amp;&lt;&gt;&quot;&#x27;]/g,c=&gt;({&#x27;&amp;&#x27;:&#x27;&amp;amp;&#x27;,&#x27;&lt;&#x27;:&#x27;&amp;lt;&#x27;,&#x27;&gt;&#x27;:&#x27;&amp;gt;&#x27;,&#x27;&quot;&#x27;:&#x27;&amp;quot;&#x27;,&quot;&#x27;&quot;:&#x27;&amp;#39;&#x27;}[c]))}
+<span class="ln">324</span>function v23Bytes(v){return te23.encode(v)}
+<span class="ln">325</span>function v23B64(bytes){let str=&#x27;&#x27;;for(const b of bytes)str+=String.fromCharCode(b);return btoa(str)}
+<span class="ln">326</span>function v23FromB64(str){return Uint8Array.from(atob(str),ch=&gt;ch.charCodeAt(0))}
+<span class="ln">327</span>async function v23DerivePassword(password,salt,iterations=180000){
+<span class="ln">328</span> if(!globalThis.crypto?.subtle)throw Error(&#x27;当前浏览器不支持本地 WebCrypto。请使用支持 WebCrypto 的现代浏览器离线打开。&#x27;);
+<span class="ln">329</span> const key=await crypto.subtle.importKey(&#x27;raw&#x27;,v23Bytes(password),&#x27;PBKDF2&#x27;,false,[&#x27;deriveBits&#x27;]);
+<span class="ln">330</span> return new Uint8Array(await crypto.subtle.deriveBits({name:&#x27;PBKDF2&#x27;,salt,iterations,hash:&#x27;SHA-256&#x27;},key,256))
+<span class="ln">331</span>}
+<span class="ln">332</span>function v23SetupFolds(){
+<span class="ln">333</span> const panels=document.querySelectorAll(&#x27;#encodeWorkspace section.panel, #recoverWorkspace section.panel&#x27;);
+<span class="ln">334</span> panels.forEach((sec,idx)=&gt;{
+<span class="ln">335</span>  if(sec.dataset.foldInitialized)return;sec.dataset.foldInitialized=&#x27;yes&#x27;;
+<span class="ln">336</span>  const h2=sec.querySelector(&#x27;h2&#x27;);if(!h2)return;
+<span class="ln">337</span>  const rootHeader=h2.parentElement===sec?h2:h2.parentElement;
+<span class="ln">338</span>  const wrap=document.createElement(&#x27;div&#x27;);wrap.className=&#x27;fold-content&#x27;;
+<span class="ln">339</span>  while(rootHeader.nextSibling)wrap.appendChild(rootHeader.nextSibling);
+<span class="ln">340</span>  sec.appendChild(wrap);
+<span class="ln">341</span>  const toggle=document.createElement(&#x27;button&#x27;);toggle.type=&#x27;button&#x27;;toggle.className=&#x27;fold-toggle&#x27;;toggle.textContent=&#x27;收起 ▴&#x27;;toggle.setAttribute(&#x27;aria-expanded&#x27;,&#x27;true&#x27;);
+<span class="ln">342</span>  toggle.onclick=()=&gt;{sec.classList.toggle(&#x27;folded&#x27;);const expanded=!sec.classList.contains(&#x27;folded&#x27;);toggle.textContent=expanded?&#x27;收起 ▴&#x27;:&#x27;展开 ▾&#x27;;toggle.setAttribute(&#x27;aria-expanded&#x27;,String(expanded));if(expanded)requestDraw()};
+<span class="ln">343</span>  if(rootHeader===h2){const head=document.createElement(&#x27;div&#x27;);head.className=&#x27;fold-heading&#x27;;sec.insertBefore(head,rootHeader);head.append(rootHeader,toggle)}
+<span class="ln">344</span>  else rootHeader.append(toggle);
+<span class="ln">345</span>  if((h2.textContent||&#x27;&#x27;).includes(&#x27;参考文本索引表&#x27;))toggle.click();
+<span class="ln">346</span> });
+<span class="ln">347</span>}
+<span class="ln">348</span>function v23SetMode(mode){
+<span class="ln">349</span> v23.mode=mode;
+<span class="ln">350</span> $(&#x27;encodeWorkspace&#x27;).classList.toggle(&#x27;hidden&#x27;,mode!==&#x27;encode&#x27;);
+<span class="ln">351</span> $(&#x27;recoverWorkspace&#x27;).classList.toggle(&#x27;hidden&#x27;,mode!==&#x27;recover&#x27;);
+<span class="ln">352</span> $(&#x27;modeEncode&#x27;).classList.toggle(&#x27;active&#x27;,mode===&#x27;encode&#x27;);$(&#x27;modeRecover&#x27;).classList.toggle(&#x27;active&#x27;,mode===&#x27;recover&#x27;);
+<span class="ln">353</span> if(mode===&#x27;encode&#x27;)requestDraw();else v25RequestDraw()
+<span class="ln">354</span>}
+<span class="ln">355</span></div></details></section><section class="card" id="s356"><h2>重建模式数据结构与文件匹配算法</h2><p class="muted">原文件第 356–385 行，30 行；区块 10 / 18</p><h3>职责</h3><p>默认节点位数、坐标模式切换、重建片段模型、坐标解释、导入条目过滤。</p><h3>输入与输出</h3><p>输入：四项重建坐标、参考词列表、导入条目列表；输出：符合四字母约束的匹配集合。</p><h3>人工审计解释</h3><div class="tip">文件匹配只依据导入数据；? 不施加约束；单坐标返回参考词字符集合，双坐标返回特定字符。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>v25NewGroup()</code> <small>第 359 行</small>：创建重建画布组，四项默认均双坐标、每项 4 节点。</div><div class="func"><code>v25ChangeGroupMode()</code> <small>第 360 行</small>：切换重建组某项单双模式，重置节点长度并移除该项旧引用。</div><div class="func"><code>v27NewRoute()</code> <small>第 362 行</small>：创建包含连续字符和路径 ID 的重建路径对象。</div><div class="func"><code>v27Current()</code> <small>第 363 行</small>：读取本片段当前编辑的路径。</div><div class="func"><code>v23NewSeg()</code> <small>第 364 行</small>：创建新的重建片段数据模型。</div><div class="func"><code>v23AddSegment()</code> <small>第 365 行</small>：把新片段加入会话并重绘。</div><div class="func"><code>renderSegmentHeading()</code> <small>第 366 行</small>：更新片段标题和状态。</div><div class="func"><code>v23WordSet()</code> <small>第 367 行</small>：解释单坐标、双坐标、单字母或 ? 为该位置允许的字母集合。</div><div class="func"><code>v23MatchesForCodes()</code> <small>第 379 行</small>：对导入条目按四个字母约束过滤并返回结果。</div></div><details><summary>展开查看本块完整原始源码（第 356–385 行）</summary><div class="code"><span class="ln">356</span>const V25_DEFAULT_LENGTHS=[4,4,4,4], V25_MAX_PATH=5000;
+<span class="ln">357</span>const V27_COLORS=[&#x27;#2763d0&#x27;,&#x27;#b96522&#x27;,&#x27;#16876b&#x27;,&#x27;#885bc2&#x27;,&#x27;#b74b83&#x27;,&#x27;#087e9e&#x27;,&#x27;#95751b&#x27;,&#x27;#6377a9&#x27;];
+<span class="ln">358</span>let v25DrawScheduled=false;
+<span class="ln">359</span>function v25NewGroup(position,key){return {position,key,lengths:[...V25_DEFAULT_LENGTHS],modes:[...FOUR_DOUBLE]}}
+<span class="ln">360</span>function v25ChangeGroupMode(seg,g,ci,newMode){if(![COORD_SINGLE,COORD_DOUBLE].includes(newMode)||newMode===g.modes[ci])return;const prefix=`${g.key}.${ci}.`;const count=seg.paths.reduce((n,p)=&gt;n+p.ids.filter(id=&gt;id.startsWith(prefix)).length,0);if(count&amp;&amp;!confirm(`更换坐标类型需要重新连线，本项已有 ${count} 次路径引用将被移除。是否继续？`)){v25RenderBoard(seg);return}g.modes[ci]=newMode;g.lengths[ci]=newMode===COORD_DOUBLE?4:2;seg.paths.forEach(p=&gt;{p.ids=p.ids.filter(id=&gt;!id.startsWith(prefix));p.selectedIndex=-1});v25Invalidate(seg);v25RenderBoard(seg)}
+<span class="ln">361</span>
+<span class="ln">362</span>function v27NewRoute(sequence=&#x27;&#x27;,ids=[]){return {sequence,ids,selectedIndex:-1,insertAfter:false}}
+<span class="ln">363</span>function v27Current(seg){return seg.activePath&gt;=0?seg.paths[seg.activePath]||null:null}
+<span class="ln">364</span>function v23NewSeg(){return {id:&#x27;s&#x27;+Math.random().toString(36).slice(2,11),label:`片段${String(v23.segments.length+1).padStart(2,&#x27;0&#x27;)}`,groups:[v25NewGroup(1,&#x27;g1&#x27;)],nextGroupKey:2,mappings:[],results:[],status:&#x27;未开始&#x27;,closed:false,paths:[v27NewRoute()],activePath:0,visiblePaths:new Set([0]),pathCheck:false,cols:2,dragPreview:null}}
+<span class="ln">365</span>function v23AddSegment(){const seg=v23NewSeg();v23.segments.push(seg);renderSegments()}
+<span class="ln">366</span>function renderSegmentHeading(seg){const sec=$(&#x27;segment-&#x27;+seg.id);if(!sec)return;sec.querySelector(&#x27;.seg-state&#x27;).textContent=seg.status;sec.querySelector(&#x27;.seg-title&#x27;).textContent=seg.label}
+<span class="ln">367</span>function v23WordSet(reference,code,position){
+<span class="ln">368</span> if(!code||code===&#x27;?&#x27;||code===&#x27;*&#x27;)return null;
+<span class="ln">369</span> const m=/^\[(\d+)(?:,(\d+))?\]$/.exec(code);
+<span class="ln">370</span> if(m){
+<span class="ln">371</span>  const wi=Number(m[1]),ci=m[2]?Number(m[2]):null,ref=reference[wi-1];
+<span class="ln">372</span>  if(!ref)throw Error(`词序 ${wi} 超出参考文本范围`);
+<span class="ln">373</span>  if(ci!==null){if(ci&lt;1||ci&gt;ref.length)throw Error(`词序 ${wi} 的字母位置 ${ci} 不存在`);return new Set([ref.toLowerCase()[ci-1]])}
+<span class="ln">374</span>  return new Set(ref.toLowerCase().split(&#x27;&#x27;))
+<span class="ln">375</span> }
+<span class="ln">376</span> if(/^[a-z]$/i.test(code))return new Set([code.toLowerCase()]);
+<span class="ln">377</span> throw Error(`无效编码 ${code}。使用 [15,01]、[06]、单字母或 ?`)
+<span class="ln">378</span>}
+<span class="ln">379</span>function v23MatchesForCodes(text,reference){
+<span class="ln">380</span> const parts=text.trim().split(/\s+/).filter(Boolean);
+<span class="ln">381</span> if(parts.length!==4)throw Error(&#x27;每个词需要四项编码，以空格分隔。未知项填 ?&#x27;);
+<span class="ln">382</span> const constraints=parts.map((code,i)=&gt;v23WordSet(reference,code,i));
+<span class="ln">383</span> if(!v23.importEntries.length)throw Error(&#x27;请先导入本地数据文件。&#x27;);
+<span class="ln">384</span> return v23.importEntries.filter(word=&gt;{const letters=lettersFor(word);return constraints.every((allowed,i)=&gt;allowed===null||allowed.has(letters[i]))})
+<span class="ln">385</span>}</div></details></section><section class="card" id="s386"><h2>共享节点回填与四项坐标重建</h2><p class="muted">原文件第 386–445 行，60 行；区块 11 / 18</p><h3>职责</h3><p>把多条连续字符序列按路径 ID 回填到同一画布，检测冲突，生成坐标文本并计算完成状态。</p><h3>输入与输出</h3><p>输入：每条路径 sequence 与 ids；输出：节点映射、冲突集合、坐标四项。</p><h3>人工审计解释</h3><div class="tip">路径长度匹配不保证每个节点都有值；双坐标逆向固定取最后两位为字符位置。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>v23GetReference()</code> <small>第 386 行</small>：读取当前重建参考文本并切词。</div><div class="func"><code>v25Sequence()</code> <small>第 387 行</small>：删除路径连续字符中的空白。</div><div class="func"><code>v25NodeId()</code> <small>第 388 行</small>：把组、槽位、字符位置组合成节点 ID。</div><div class="func"><code>v25Nodes()</code> <small>第 389 行</small>：枚举当前片段全部合法节点 ID。</div><div class="func"><code>v25Assigned()</code> <small>第 390 行</small>：多条路径共同回填节点、检测不同字符冲突并计算完成情况。</div><div class="func"><code>v25GroupCodes()</code> <small>第 409 行</small>：把一组回填节点组装成单/双坐标或原样字母。</div><div class="func"><code>v25SyncMappings()</code> <small>第 427 行</small>：把各画布组的四项坐标同步到片段映射。</div><div class="func"><code>v25Invalidate()</code> <small>第 432 行</small>：清空内部匹配结果，刷新路径状态；当前未清空 UI 旧结果。</div><div class="func"><code>v25RefreshStatus()</code> <small>第 433 行</small>：更新路径长度、冲突和坐标汇总显示。</div></div><details><summary>展开查看本块完整原始源码（第 386–445 行）</summary><div class="code"><span class="ln">386</span>function v23GetReference(){return wordsOf($(&#x27;recoverSource&#x27;).value)}
+<span class="ln">387</span>function v25Sequence(path){return String(path?.sequence||&#x27;&#x27;).replace(/\s+/g,&#x27;&#x27;)}
+<span class="ln">388</span>function v25NodeId(groupKey,ci,ti){return `${groupKey}.${ci}.${ti}`}
+<span class="ln">389</span>function v25Nodes(seg){const entries=[];for(const g of seg.groups)for(let ci=0;ci&lt;4;ci++)for(let ti=0;ti&lt;g.lengths[ci];ti++)entries.push(v25NodeId(g.key,ci,ti));return new Set(entries)}
+<span class="ln">390</span>function v25Assigned(seg){
+<span class="ln">391</span> const valid=v25Nodes(seg),values=new Map(),counts=new Map(),conflicts=new Set(),unmapped=[],perPath=[];
+<span class="ln">392</span> seg.paths.forEach((path,ri)=&gt;{
+<span class="ln">393</span>  const seq=v25Sequence(path),unknown=[];
+<span class="ln">394</span>  path.ids.forEach((id,i)=&gt;{
+<span class="ln">395</span>   if(!valid.has(id)){unmapped.push({route:ri,index:i+1});unknown.push(i+1);return}
+<span class="ln">396</span>   if(!counts.has(id))counts.set(id,[]);
+<span class="ln">397</span>   const entries=counts.get(id);let item=entries.find(v=&gt;v.i===ri);
+<span class="ln">398</span>   if(!item){item={i:ri,n:0};entries.push(item)}item.n++;
+<span class="ln">399</span>   if(i&gt;=seq.length)return;
+<span class="ln">400</span>   const c=seq[i];
+<span class="ln">401</span>   if(values.has(id)&amp;&amp;values.get(id)!==c)conflicts.add(id);
+<span class="ln">402</span>   else if(!values.has(id))values.set(id,c)
+<span class="ln">403</span>  });
+<span class="ln">404</span>  perPath.push({seq,length:seq.length,refs:path.ids.length,unknown,match:!!seq.length&amp;&amp;path.ids.length===seq.length&amp;&amp;!unknown.length});
+<span class="ln">405</span> });
+<span class="ln">406</span> const full=perPath.length&gt;0&amp;&amp;perPath.every(p=&gt;p.match)&amp;&amp;!conflicts.size;
+<span class="ln">407</span> return {values,counts,conflicts,unmapped,perPath,full};
+<span class="ln">408</span>}
+<span class="ln">409</span>function v25GroupCodes(g,assignment){
+<span class="ln">410</span> const codes=[];
+<span class="ln">411</span> for(let ci=0;ci&lt;4;ci++){
+<span class="ln">412</span>  const chars=Array.from({length:g.lengths[ci]},(_,ti)=&gt;assignment.values.get(v25NodeId(g.key,ci,ti))??&#x27;?&#x27;);
+<span class="ln">413</span>  let code=&#x27;?&#x27;;
+<span class="ln">414</span>  if(chars.every(c=&gt;c!==&#x27;?&#x27;)){
+<span class="ln">415</span>   const joined=chars.join(&#x27;&#x27;);
+<span class="ln">416</span>   if(/^[a-z]$/i.test(joined))code=joined.toLowerCase();
+<span class="ln">417</span>   else if(/^\d+$/.test(joined)){
+<span class="ln">418</span>    if(g.modes[ci]===COORD_DOUBLE){if(joined.length&gt;=3)code=`[${joined.slice(0,-2)},${joined.slice(-2)}]`}
+<span class="ln">419</span>    else code=`[${joined}]`;
+<span class="ln">420</span>   }
+<span class="ln">421</span>  }
+<span class="ln">422</span>  if(chars.some((_,ti)=&gt;assignment.conflicts.has(v25NodeId(g.key,ci,ti))))code=&#x27;?&#x27;;
+<span class="ln">423</span>  codes.push(code)
+<span class="ln">424</span> }
+<span class="ln">425</span> return codes;
+<span class="ln">426</span>}
+<span class="ln">427</span>function v25SyncMappings(seg,assignment){
+<span class="ln">428</span> const a=assignment||v25Assigned(seg);
+<span class="ln">429</span> seg.mappings=seg.groups.map(g=&gt;({position:String(g.position),codes:v25GroupCodes(g,a).join(&#x27; &#x27;)}));
+<span class="ln">430</span> return seg.mappings;
+<span class="ln">431</span>}
+<span class="ln">432</span>function v25Invalidate(seg){seg.results=[];seg.pathCheck=false;seg.status=&#x27;处理中&#x27;;v25SyncMappings(seg);renderSegmentHeading(seg)}
+<span class="ln">433</span>function v25RefreshStatus(seg){
+<span class="ln">434</span> const scope=$(&#x27;segment-&#x27;+seg.id);if(!scope)return;
+<span class="ln">435</span> const a=v25Assigned(seg),msg=scope.querySelector(&#x27;.seg-path-state&#x27;);
+<span class="ln">436</span> seg.pathCheck=a.full;
+<span class="ln">437</span> const totalChars=a.perPath.reduce((n,p)=&gt;n+p.length,0),totalRefs=a.perPath.reduce((n,p)=&gt;n+p.refs,0);
+<span class="ln">438</span> const lines=a.perPath.map((p,i)=&gt;`路径${fmt(i+1)} ${p.refs}/${p.length} 次${p.match?&#x27; · 长度匹配&#x27;:p.refs&lt;p.length?&#x27; · 待连 &#x27;+(p.length-p.refs):p.refs&gt;p.length?&#x27; · 多连 &#x27;+(p.refs-p.length):&#x27; · 未输入字符&#x27;}`);
+<span class="ln">439</span> if(a.conflicts.size)lines.push(`${a.conflicts.size} 个共用节点数字冲突`);
+<span class="ln">440</span> if(a.unmapped.length)lines.push(`${a.unmapped.length} 次引用的节点不存在`);
+<span class="ln">441</span> if(seg.pathCheck){msg.textContent=`全部 ${a.perPath.length} 条路径匹配完成 · 共 ${totalRefs} 次引用 · ${a.values.size} 个节点 · 跨路径数字一致。`;msg.className=&#x27;rec-validation seg-path-state good&#x27;}
+<span class="ln">442</span> else{msg.textContent=lines.join(&#x27;；&#x27;)||&#x27;尚未创建重建路径&#x27;;msg.className=&#x27;rec-validation seg-path-state&#x27;+(a.conflicts.size||a.unmapped.length?&#x27; bad&#x27;:&#x27;&#x27;)}
+<span class="ln">443</span> scope.querySelector(&#x27;.seg-length&#x27;).textContent=`本段 ${a.perPath.length} 条路径 · 连续字符 ${totalChars} 个 · 已连线 ${totalRefs} 次 · 已填充 ${a.values.size} 个节点`;
+<span class="ln">444</span> scope.querySelector(&#x27;.rec-recovered-codes&#x27;).textContent=seg.groups.map((g,i)=&gt;`画布组${fmt(i+1)}（条目位置${fmt(g.position)}词）：${v25GroupCodes(g,a).join(&#x27; &#x27;)}`).join(&#x27;\n&#x27;)||&#x27;请先新增组。&#x27;;
+<span class="ln">445</span> renderSegmentHeading(seg);v27UpdateRouteMetrics(seg,a)</div></details></section><section class="card" id="s446"><h2>重建片段组、路径和编辑状态</h2><p class="muted">原文件第 446–533 行，88 行；区块 12 / 18</p><h3>职责</h3><p>新增画布组、独立路径、选择显示、路径删除、单次引用位置编辑。</p><h3>输入与输出</h3><p>输入：组位置、坐标模式及路径编辑动作；输出：更新的片段数据。</p><h3>人工审计解释</h3><div class="tip">更改坐标类型会清除该项已有节点引用，并重建本段状态。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>v25AddGroup()</code> <small>第 447 行</small>：按用户指定的正整数位置增加重建画布组。</div><div class="func"><code>v25SetNote()</code> <small>第 453 行</small>：设置片段操作提示或错误提示。</div><div class="func"><code>v25ModifyPath()</code> <small>第 454 行</small>：修改当前路径 ID 集合并刷新节点赋值。</div><div class="func"><code>v25AppendNode()</code> <small>第 458 行</small>：向当前路径插入/追加一个合法节点。</div><div class="func"><code>v27UpdateRouteMetrics()</code> <small>第 465 行</small>：计算路径引用数量、字符长度和当前编辑提示。</div><div class="func"><code>v27RenderRouteControls()</code> <small>第 474 行</small>：绘制路径显示开关、名称和字符序列输入框。</div><div class="func"><code>v27CreateRoute()</code> <small>第 501 行</small>：新建片段内的一条路径并设为当前编辑目标。</div><div class="func"><code>v27DeleteRoute()</code> <small>第 502 行</small>：删除选中路径，调整索引和显示集合。</div><div class="func"><code>v25RenderPathSteps()</code> <small>第 511 行</small>：逐次显示路径引用并绑定排序/删除编辑状态。</div><div class="func"><code>v25FocusSelected()</code> <small>第 530 行</small>：高亮当前选中的画布节点。</div></div><details><summary>展开查看本块完整原始源码（第 446–533 行）</summary><div class="code"><span class="ln">446</span>}
+<span class="ln">447</span>function v25AddGroup(seg,position){
+<span class="ln">448</span> const n=Number(position);
+<span class="ln">449</span> if(!Number.isSafeInteger(n)||n&lt;1){v25SetNote(seg,&#x27;条目位置必须是正整数。&#x27;,true);return}
+<span class="ln">450</span> const key=&#x27;g&#x27;+(seg.nextGroupKey++);seg.groups.push(v25NewGroup(n,key));v25Invalidate(seg);v25RenderBoard(seg);
+<span class="ln">451</span> v25SetNote(seg,`已增加画布组 ${seg.groups.length}：对应条目位置 ${fmt(n)} 词，所有路径仍共享本段组画布。`);
+<span class="ln">452</span>}
+<span class="ln">453</span>function v25SetNote(seg,text,bad=false){const scope=$(&#x27;segment-&#x27;+seg.id);if(!scope)return;const el=scope.querySelector(&#x27;.seg-note&#x27;);el.textContent=text;el.style.color=bad?&#x27;#a92b2b&#x27;:&#x27;&#x27;}
+<span class="ln">454</span>function v25ModifyPath(seg,fn){
+<span class="ln">455</span> const p=v27Current(seg);if(!p)return;
+<span class="ln">456</span> fn(p.ids,p);p.selectedIndex=Math.min(p.selectedIndex,p.ids.length-1);v25Invalidate(seg);v25RenderBoard(seg)
+<span class="ln">457</span>}
+<span class="ln">458</span>function v25AppendNode(seg,id){
+<span class="ln">459</span> const route=v27Current(seg);if(!route||!v25Nodes(seg).has(id))return;
+<span class="ln">460</span> if(route.ids.length&gt;=V25_MAX_PATH){v25SetNote(seg,&#x27;单条路径最多5000次引用。&#x27;,true);return}
+<span class="ln">461</span> if(route.insertAfter&amp;&amp;route.selectedIndex&gt;=0&amp;&amp;route.selectedIndex&lt;route.ids.length){route.ids.splice(route.selectedIndex+1,0,id);route.selectedIndex++}
+<span class="ln">462</span> else{route.ids.push(id);route.selectedIndex=route.ids.length-1}
+<span class="ln">463</span> v25Invalidate(seg);v25RenderBoard(seg)
+<span class="ln">464</span>}
+<span class="ln">465</span>function v27UpdateRouteMetrics(seg,a){
+<span class="ln">466</span> const scope=$(&#x27;segment-&#x27;+seg.id);if(!scope)return;
+<span class="ln">467</span> const assignment=a||v25Assigned(seg);
+<span class="ln">468</span> for(const [i,stats] of assignment.perPath.entries()){
+<span class="ln">469</span>  const name=scope.querySelector(`[data-route-name=&quot;${i}&quot;]`);if(name)name.textContent=`路径${fmt(i+1)} · ${stats.refs}次`;
+<span class="ln">470</span>  const metric=scope.querySelector(`[data-route-metric=&quot;${i}&quot;]`);if(metric)metric.textContent=`连续字符 ${stats.length} 个 · 已连线 ${stats.refs} 次${stats.match?&#x27; · 数量匹配&#x27;:&#x27;&#x27;}`;
+<span class="ln">471</span> }
+<span class="ln">472</span> const status=scope.querySelector(&#x27;.rec-route-status&#x27;);if(status)status.textContent=`${seg.paths.length}条路径 · 显示${seg.visiblePaths.size}条 · 编辑${seg.activePath&lt;0?&#x27;无&#x27;:`路径${fmt(seg.activePath+1)}`}`;
+<span class="ln">473</span>}
+<span class="ln">474</span>function v27RenderRouteControls(seg){
+<span class="ln">475</span> const scope=$(&#x27;segment-&#x27;+seg.id);if(!scope)return;
+<span class="ln">476</span> const tabs=scope.querySelector(&#x27;.rec-route-tabs&#x27;),sequences=scope.querySelector(&#x27;.rec-route-sequences&#x27;);
+<span class="ln">477</span> tabs.replaceChildren();sequences.replaceChildren();
+<span class="ln">478</span> seg.paths.forEach((route,i)=&gt;{
+<span class="ln">479</span>  const holder=document.createElement(&#x27;div&#x27;);holder.className=&#x27;rec-route-tab&#x27;+(seg.activePath===i?&#x27; editing&#x27;:&#x27;&#x27;);
+<span class="ln">480</span>  const visLabel=document.createElement(&#x27;label&#x27;);visLabel.title=`显示或隐藏路径${fmt(i+1)}`;
+<span class="ln">481</span>  const cb=document.createElement(&#x27;input&#x27;);cb.type=&#x27;checkbox&#x27;;cb.checked=seg.visiblePaths.has(i);
+<span class="ln">482</span>  cb.onchange=()=&gt;{
+<span class="ln">483</span>   if(cb.checked)seg.visiblePaths.add(i);else seg.visiblePaths.delete(i);
+<span class="ln">484</span>   if(!cb.checked&amp;&amp;seg.activePath===i)seg.activePath=[...seg.visiblePaths].sort((a,b)=&gt;a-b)[0]??-1;
+<span class="ln">485</span>   v27RenderRouteControls(seg);v25RenderBoard(seg);
+<span class="ln">486</span>  };visLabel.append(cb);
+<span class="ln">487</span>  const button=document.createElement(&#x27;button&#x27;);button.type=&#x27;button&#x27;;button.dataset.routeName=i;
+<span class="ln">488</span>  button.setAttribute(&#x27;data-route-name&#x27;,i);button.textContent=`路径${fmt(i+1)} · ${route.ids.length}次`;
+<span class="ln">489</span>  button.onclick=()=&gt;{seg.activePath=i;seg.visiblePaths.add(i);v27RenderRouteControls(seg);v25RenderBoard(seg)};
+<span class="ln">490</span>  holder.append(visLabel,button);tabs.append(holder);
+<span class="ln">491</span>  const card=document.createElement(&#x27;div&#x27;);card.className=&#x27;rec-seq-card&#x27;+(seg.activePath===i?&#x27; editing&#x27;:&#x27;&#x27;);
+<span class="ln">492</span>  const title=document.createElement(&#x27;strong&#x27;);title.textContent=`路径${fmt(i+1)} · 保存的连续字符`;title.style.color=V27_COLORS[i%V27_COLORS.length];
+<span class="ln">493</span>  const textarea=document.createElement(&#x27;textarea&#x27;);textarea.value=route.sequence;textarea.rows=2;
+<span class="ln">494</span>  textarea.setAttribute(&#x27;aria-label&#x27;,`路径${fmt(i+1)}的连续字符序列`);textarea.placeholder=`粘贴路径${fmt(i+1)}的连续字符，可以包含换行`;
+<span class="ln">495</span>  textarea.oninput=()=&gt;{route.sequence=textarea.value;v25Invalidate(seg);v25RenderBoard(seg);v25SetNote(seg,`路径${fmt(i+1)}字符已更新，全部路径共同重新匹配节点。`)};
+<span class="ln">496</span>  const metrics=document.createElement(&#x27;span&#x27;);metrics.className=&#x27;rec-seq-metrics&#x27;;metrics.setAttribute(&#x27;data-route-metric&#x27;,i);
+<span class="ln">497</span>  card.append(title,textarea,metrics);sequences.append(card)
+<span class="ln">498</span> });
+<span class="ln">499</span> v27UpdateRouteMetrics(seg);
+<span class="ln">500</span>}
+<span class="ln">501</span>function v27CreateRoute(seg){seg.paths.push(v27NewRoute());seg.activePath=seg.paths.length-1;seg.visiblePaths.add(seg.activePath);v25Invalidate(seg);v27RenderRouteControls(seg);v25RenderBoard(seg)}
+<span class="ln">502</span>function v27DeleteRoute(seg){
+<span class="ln">503</span> const i=seg.activePath;if(i&lt;0)return;
+<span class="ln">504</span> if((seg.paths[i].ids.length||v25Sequence(seg.paths[i]))&amp;&amp;!confirm(`删除路径${fmt(i+1)}及其连续字符？其他路径和条目组不受影响。`))return;
+<span class="ln">505</span> seg.paths.splice(i,1);
+<span class="ln">506</span> seg.visiblePaths=new Set([...seg.visiblePaths].filter(j=&gt;j!==i).map(j=&gt;j&gt;i?j-1:j));
+<span class="ln">507</span> seg.activePath=seg.paths.length?Math.min(i,seg.paths.length-1):-1;
+<span class="ln">508</span> if(seg.activePath&gt;=0)seg.visiblePaths.add(seg.activePath);
+<span class="ln">509</span> v25Invalidate(seg);v27RenderRouteControls(seg);v25RenderBoard(seg)
+<span class="ln">510</span>}
+<span class="ln">511</span>function v25RenderPathSteps(seg,assigned){
+<span class="ln">512</span> const scope=$(&#x27;segment-&#x27;+seg.id),area=scope.querySelector(&#x27;.rec-path-list&#x27;),route=v27Current(seg);area.replaceChildren();
+<span class="ln">513</span> if(route){const seq=v25Sequence(route);route.ids.forEach((id,i)=&gt;{
+<span class="ln">514</span>  const btn=document.createElement(&#x27;button&#x27;);btn.type=&#x27;button&#x27;;btn.className=&#x27;rec-path-step&#x27;+(i===route.selectedIndex?&#x27; selected&#x27;:&#x27;&#x27;);
+<span class="ln">515</span>  const parts=id.split(&#x27;.&#x27;),group=seg.groups.find(g=&gt;g.key===parts[0]);btn.title=`第${i+1}次 · 画布${parts[0]} · 条目位置${group?.position??&#x27;?&#x27;} · 槽${Number(parts[1])+1} · 字符${Number(parts[2])+1}`;
+<span class="ln">516</span>  const k=document.createElement(&#x27;span&#x27;);k.className=&#x27;smallidx&#x27;;k.textContent=String(i+1);btn.append(k,document.createTextNode(seq[i]??&#x27;?&#x27;));
+<span class="ln">517</span>  btn.onclick=()=&gt;{route.selectedIndex=i;v25RenderPathSteps(seg,v25Assigned(seg));v25FocusSelected(seg)};area.append(btn)
+<span class="ln">518</span> })}
+<span class="ln">519</span> if(!route)area.textContent=&#x27;未选中路径&#x27;;
+<span class="ln">520</span> else if(!route.ids.length)area.textContent=&#x27;路径为空&#x27;;
+<span class="ln">521</span> const valid=!!route&amp;&amp;route.selectedIndex&gt;=0&amp;&amp;route.selectedIndex&lt;route.ids.length;
+<span class="ln">522</span> for(const key of [&#x27;moveLeft&#x27;,&#x27;moveRight&#x27;,&#x27;duplicateOne&#x27;,&#x27;deleteOne&#x27;])scope.querySelector(&#x27;.rec-&#x27;+key).disabled=!valid;
+<span class="ln">523</span> scope.querySelector(&#x27;.rec-moveLeft&#x27;).disabled=!valid||route.selectedIndex===0;
+<span class="ln">524</span> scope.querySelector(&#x27;.rec-moveRight&#x27;).disabled=!valid||route.selectedIndex===route.ids.length-1;
+<span class="ln">525</span> scope.querySelector(&#x27;.rec-insertMode&#x27;).textContent=`在选中项后插入：${route?.insertAfter?&#x27;开&#x27;:&#x27;关&#x27;}`;
+<span class="ln">526</span> scope.querySelector(&#x27;.rec-insertMode&#x27;).disabled=!valid;
+<span class="ln">527</span> for(const key of [&#x27;repeatLast&#x27;,&#x27;undoPoint&#x27;,&#x27;clearPath&#x27;])scope.querySelector(&#x27;.rec-&#x27;+key).disabled=!route||!route.ids.length;
+<span class="ln">528</span> scope.querySelector(&#x27;.rec-deletePath&#x27;).disabled=!route;
+<span class="ln">529</span>}
+<span class="ln">530</span>function v25FocusSelected(seg){
+<span class="ln">531</span> const scope=$(&#x27;segment-&#x27;+seg.id);if(!scope)return;const route=v27Current(seg);
+<span class="ln">532</span> scope.querySelectorAll(&#x27;.rec-char&#x27;).forEach(el=&gt;el.classList.toggle(&#x27;recfocus&#x27;,!!route&amp;&amp;el.dataset.id===route.ids[route.selectedIndex]));
+<span class="ln">533</span>}</div></details></section><section class="card" id="s534"><h2>重建画布的 DOM 渲染</h2><p class="muted">原文件第 534–579 行，46 行；区块 13 / 18</p><h3>职责</h3><p>每组四项坐标卡片、单双坐标下拉、字符节点、冲突标识、手动调整位数。</p><h3>输入与输出</h3><p>输入：片段组 lengths/modes 和节点赋值；输出：画布 DOM。</p><h3>人工审计解释</h3><div class="tip">长度调整范围为 1–8 个节点，保留原样字母回退的单节点用途。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>v25RenderBoard()</code> <small>第 534 行</small>：绘制重建画布组、模式选择器和手动节点位数菜单。</div></div><details><summary>展开查看本块完整原始源码（第 534–579 行）</summary><div class="code"><span class="ln">534</span>function v25RenderBoard(seg){
+<span class="ln">535</span> const scope=$(&#x27;segment-&#x27;+seg.id);if(!scope)return;
+<span class="ln">536</span> const board=scope.querySelector(&#x27;.rec-groups&#x27;);board.replaceChildren();
+<span class="ln">537</span> board.style.setProperty(&#x27;--rec-cols&#x27;,String(seg.cols||2));
+<span class="ln">538</span> const a=v25Assigned(seg);
+<span class="ln">539</span> for(const g of seg.groups){
+<span class="ln">540</span>  const group=document.createElement(&#x27;section&#x27;);group.className=&#x27;rec-group&#x27;;
+<span class="ln">541</span>  const head=document.createElement(&#x27;div&#x27;);head.className=&#x27;rec-group-head&#x27;;
+<span class="ln">542</span>  const title=document.createElement(&#x27;strong&#x27;);title.textContent=`画布第 ${fmt(seg.groups.indexOf(g)+1)} 组 · 条目位置 ${fmt(g.position)} 词`;
+<span class="ln">543</span>  const remove=document.createElement(&#x27;button&#x27;);remove.className=&#x27;danger&#x27;;remove.textContent=&#x27;移除本组&#x27;;remove.type=&#x27;button&#x27;;
+<span class="ln">544</span>  remove.onclick=()=&gt;{if(seg.paths.some(p=&gt;p.ids.some(id=&gt;id.startsWith(`${g.key}.`)))&amp;&amp;!confirm(`第${g.position}组仍被路径引用，移除会同时删除这些引用。是否继续？`))return;seg.groups=seg.groups.filter(x=&gt;x!==g);seg.paths.forEach(p=&gt;{p.ids=p.ids.filter(id=&gt;!id.startsWith(`${g.key}.`));p.selectedIndex=-1});v25Invalidate(seg);v25RenderBoard(seg)};
+<span class="ln">545</span>  head.append(title,remove);group.append(head);
+<span class="ln">546</span>  const slots=document.createElement(&#x27;div&#x27;);slots.className=&#x27;rec-slots&#x27;;
+<span class="ln">547</span>  const codes=v25GroupCodes(g,a);
+<span class="ln">548</span>  for(let ci=0;ci&lt;4;ci++){
+<span class="ln">549</span>   const slot=document.createElement(&#x27;div&#x27;);slot.className=&#x27;rec-slot&#x27;;
+<span class="ln">550</span>   const label=document.createElement(&#x27;div&#x27;);label.className=&#x27;rec-slot-head&#x27;;
+<span class="ln">551</span>   const text=document.createElement(&#x27;span&#x27;);text.textContent=`${&#x27;①②③④&#x27;[ci]} ${codes[ci]}`;label.append(text);slot.append(label);
+<span class="ln">552</span>   const typeSelect=document.createElement(&#x27;select&#x27;);typeSelect.className=&#x27;rec-slot-mode&#x27;;typeSelect.setAttribute(&#x27;aria-label&#x27;,`条目位置${g.position}词第${ci+1}项坐标类型`);typeSelect.add(new Option(&#x27;双坐标&#x27;,COORD_DOUBLE));typeSelect.add(new Option(&#x27;单坐标&#x27;,COORD_SINGLE));typeSelect.value=g.modes[ci];typeSelect.onchange=()=&gt;v25ChangeGroupMode(seg,g,ci,typeSelect.value);slot.append(typeSelect);
+<span class="ln">553</span>   const chars=document.createElement(&#x27;div&#x27;);chars.className=&#x27;rec-char-wrap&#x27;;
+<span class="ln">554</span>   for(let ti=0;ti&lt;g.lengths[ci];ti++){
+<span class="ln">555</span>    const id=v25NodeId(g.key,ci,ti),c=a.values.get(id),entries=(a.counts.get(id)||[]).filter(x=&gt;seg.visiblePaths.has(x.i));
+<span class="ln">556</span>    const node=document.createElement(&#x27;button&#x27;);node.type=&#x27;button&#x27;;node.className=&#x27;rec-char&#x27;+(a.conflicts.has(id)?&#x27; conflict&#x27;:c!==undefined?&#x27; filled&#x27;:&#x27;&#x27;)+(entries.some(x=&gt;x.i===seg.activePath)?&#x27; active-route&#x27;:&#x27;&#x27;);node.textContent=a.conflicts.has(id)?&#x27;!&#x27;:(c??&#x27;?&#x27;);node.dataset.id=id;
+<span class="ln">557</span>    node.title=`第${g.position}组 第${ci+1}项 第${ti+1}字符：${a.conflicts.has(id)?&#x27;重复引用存在冲突&#x27;:c===undefined?&#x27;待匹配&#x27;:c} · 点击加入路径，允许重复`;
+<span class="ln">558</span>    if(entries.length){const stack=document.createElement(&#x27;span&#x27;);stack.className=&#x27;rec-count-stack&#x27;;entries.forEach(({i,n})=&gt;{const tag=document.createElement(&#x27;span&#x27;);tag.className=&#x27;rec-count&#x27;+(a.conflicts.has(id)?&#x27; bad&#x27;:&#x27;&#x27;);tag.style.background=a.conflicts.has(id)?&#x27;#b82d2d&#x27;:V27_COLORS[i%V27_COLORS.length];tag.textContent=`${fmt(i+1)}×${n}`;stack.append(tag)});node.append(stack)}chars.append(node)
+<span class="ln">559</span>   }
+<span class="ln">560</span>   slot.append(chars);slots.append(slot)
+<span class="ln">561</span>  }
+<span class="ln">562</span>  group.append(slots);
+<span class="ln">563</span>  const advanced=document.createElement(&#x27;details&#x27;);advanced.className=&#x27;rec-layout-menu&#x27;;
+<span class="ln">564</span>  const summary=document.createElement(&#x27;summary&#x27;);summary.textContent=&#x27;调整四项节点位数&#x27;;summary.style.cssText=&#x27;font-size:11px;color:#61718c;cursor:pointer&#x27;;advanced.append(summary);
+<span class="ln">565</span>  const row=document.createElement(&#x27;div&#x27;);row.className=&#x27;rec-layout-menu&#x27;;
+<span class="ln">566</span>  g.lengths.forEach((length,ci)=&gt;{
+<span class="ln">567</span>   const label=document.createElement(&#x27;label&#x27;);label.textContent=`${&#x27;①②③④&#x27;[ci]}`;
+<span class="ln">568</span>   const sel=document.createElement(&#x27;select&#x27;);
+<span class="ln">569</span>   for(let n=1;n&lt;=8;n++){const opt=new Option(String(n),String(n));sel.add(opt)}sel.value=String(length);
+<span class="ln">570</span>   sel.onchange=()=&gt;{
+<span class="ln">571</span>    const next=Number(sel.value);if(next&lt;g.lengths[ci]&amp;&amp;seg.paths.some(p=&gt;p.ids.some(id=&gt;{const m=id.split(&#x27;.&#x27;);return m[0]===g.key&amp;&amp;Number(m[1])===ci&amp;&amp;Number(m[2])&gt;=next}))&amp;&amp;!confirm(&#x27;缩短坐标位数将删除超出位数的路径引用。继续？&#x27;)){sel.value=String(g.lengths[ci]);return}
+<span class="ln">572</span>    g.lengths[ci]=next;const valid=v25Nodes(seg);seg.paths.forEach(p=&gt;{p.ids=p.ids.filter(id=&gt;valid.has(id));p.selectedIndex=-1});v25Invalidate(seg);v25RenderBoard(seg)
+<span class="ln">573</span>   };
+<span class="ln">574</span>   label.append(sel);row.append(label)
+<span class="ln">575</span>  });
+<span class="ln">576</span>  advanced.append(row);group.append(advanced);board.append(group)
+<span class="ln">577</span> }
+<span class="ln">578</span> v25RenderPathSteps(seg,a);v25RefreshStatus(seg);v25FocusSelected(seg);v25RequestDraw();
+<span class="ln">579</span>}</div></details></section><section class="card" id="s580"><h2>重建路径绘图与指针交互</h2><p class="muted">原文件第 580–636 行，57 行；区块 14 / 18</p><h3>职责</h3><p>多路径 SVG 箭头、节点空间坐标、鼠标/触摸拖动、重复引用与单节点点击。</p><h3>输入与输出</h3><p>输入：指针事件与路径节点；输出：路径 ID 的编辑和可视化连线。</p><h3>人工审计解释</h3><div class="tip">视觉绘图和路径内容分离；路径数据不是从 SVG 反向识别。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>v25RequestDraw()</code> <small>第 580 行</small>：按动画帧调度重建画布箭头绘制。</div><div class="func"><code>v25DrawAll()</code> <small>第 581 行</small>：对所有可见的未折叠片段绘图。</div><div class="func"><code>v25DrawSegment()</code> <small>第 582 行</small>：绘制某片段多条路径的 SVG 箭头。</div><div class="func"><code>v25WireBoard()</code> <small>第 607 行</small>：绑定重建画布的点击、拖动和滚动事件。</div><div class="func"><code>positionAt()</code> <small>第 609 行</small>：局部函数：把指针位置转换为画布局部坐标。</div><div class="func"><code>stop()</code> <small>第 621 行</small>：局部函数：结束重建路径拖拽并保存节点。</div></div><details><summary>展开查看本块完整原始源码（第 580–636 行）</summary><div class="code"><span class="ln">580</span>function v25RequestDraw(){if(v25DrawScheduled)return;v25DrawScheduled=true;requestAnimationFrame(()=&gt;{v25DrawScheduled=false;v25DrawAll()})}
+<span class="ln">581</span>function v25DrawAll(){for(const seg of v23.segments){if(seg.closed)continue;const scope=$(&#x27;segment-&#x27;+seg.id);if(scope&amp;&amp;scope.offsetParent!==null)v25DrawSegment(seg)}}
+<span class="ln">582</span>function v25DrawSegment(seg){
+<span class="ln">583</span> const scope=$(&#x27;segment-&#x27;+seg.id);if(!scope)return;
+<span class="ln">584</span> const root=scope.querySelector(&#x27;.rec-arrow-svg&#x27;),stage=scope.querySelector(&#x27;.rec-stage&#x27;);if(!root||!stage)return;
+<span class="ln">585</span> root.replaceChildren();const sr=stage.getBoundingClientRect(),w=stage.offsetWidth,h=stage.offsetHeight;
+<span class="ln">586</span> root.setAttribute(&#x27;viewBox&#x27;,`0 0 ${w} ${h}`);root.setAttribute(&#x27;width&#x27;,w);root.setAttribute(&#x27;height&#x27;,h);
+<span class="ln">587</span> const pos=new Map();scope.querySelectorAll(&#x27;.rec-char&#x27;).forEach(node=&gt;{const b=node.getBoundingClientRect();pos.set(node.dataset.id,{x:b.left+b.width/2-sr.left,y:b.top+b.height/2-sr.top})});
+<span class="ln">588</span> const svgNS=&#x27;http://www.w3.org/2000/svg&#x27;,make=(name,attrs)=&gt;{const e=document.createElementNS(svgNS,name);for(const [k,v] of Object.entries(attrs||{}))e.setAttribute(k,String(v));return e};
+<span class="ln">589</span> const visible=[...seg.visiblePaths].filter(i=&gt;seg.paths[i]).sort((a,b)=&gt;a-b),defs=make(&#x27;defs&#x27;);
+<span class="ln">590</span> visible.forEach(i=&gt;{const color=V27_COLORS[i%V27_COLORS.length],mid=`rec-arrow-${seg.id}-${i}`;
+<span class="ln">591</span>  const marker=make(&#x27;marker&#x27;,{id:mid,viewBox:&#x27;0 0 10 10&#x27;,refX:8,refY:5,markerWidth:5,markerHeight:5,orient:&#x27;auto&#x27;});
+<span class="ln">592</span>  marker.append(make(&#x27;path&#x27;,{d:&#x27;M0 0 L10 5 L0 10z&#x27;,fill:color}));defs.append(marker)
+<span class="ln">593</span> });root.append(defs);
+<span class="ln">594</span> visible.forEach((i,displayIndex)=&gt;{
+<span class="ln">595</span>  const path=seg.paths[i].ids,color=V27_COLORS[i%V27_COLORS.length],mid=`rec-arrow-${seg.id}-${i}`;
+<span class="ln">596</span>  for(let j=1;j&lt;path.length;j++){
+<span class="ln">597</span>   const a=pos.get(path[j-1]),b=pos.get(path[j]);if(!a||!b)continue;
+<span class="ln">598</span>   const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
+<span class="ln">599</span>   if(len&lt;1){const off=(j%4)*5+displayIndex*5;root.append(make(&#x27;path&#x27;,{d:`M${a.x+9} ${a.y-12-off} C${a.x+38+off} ${a.y-42-off},${a.x+45+off} ${a.y+28+off},${a.x+9} ${a.y+11+off}`,fill:&#x27;none&#x27;,stroke:color,&#x27;stroke-width&#x27;:2.2,&#x27;marker-end&#x27;:`url(#${mid})`}))}
+<span class="ln">600</span>   else{const off=(displayIndex-(visible.length-1)/2)*6,ox=-dy/len*off,oy=dx/len*off,q=Math.min(13,len/3);
+<span class="ln">601</span>    root.append(make(&#x27;line&#x27;,{x1:a.x+dx/len*q+ox,y1:a.y+dy/len*q+oy,x2:b.x-dx/len*q+ox,y2:b.y-dy/len*q+oy,stroke:color,&#x27;stroke-width&#x27;:2.3,&#x27;marker-end&#x27;:`url(#${mid})`}))}
+<span class="ln">602</span>  }
+<span class="ln">603</span> });
+<span class="ln">604</span> const drag=seg.dragPreview;
+<span class="ln">605</span> if(drag){const a=pos.get(drag.startId);if(a)root.append(make(&#x27;line&#x27;,{x1:a.x,y1:a.y,x2:drag.x,y2:drag.y,stroke:&#x27;#2563bd&#x27;,&#x27;stroke-width&#x27;:2,&#x27;stroke-dasharray&#x27;:&#x27;5 5&#x27;}))}
+<span class="ln">606</span>}
+<span class="ln">607</span>function v25WireBoard(seg,body){
+<span class="ln">608</span> const stage=body.querySelector(&#x27;.rec-stage&#x27;);let drag=null;
+<span class="ln">609</span> function positionAt(e){const r=stage.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+<span class="ln">610</span> stage.addEventListener(&#x27;pointerdown&#x27;,e=&gt;{
+<span class="ln">611</span>  if(e.pointerType===&#x27;mouse&#x27;&amp;&amp;e.button!==0)return;
+<span class="ln">612</span>  const node=e.target.closest?.(&#x27;.rec-char&#x27;);if(!node||drag||!v27Current(seg))return;
+<span class="ln">613</span>  e.preventDefault();drag={pointerId:e.pointerId,startId:node.dataset.id};
+<span class="ln">614</span>  seg.dragPreview={startId:node.dataset.id,...positionAt(e)};
+<span class="ln">615</span>  try{stage.setPointerCapture(e.pointerId)}catch{}v25RequestDraw()
+<span class="ln">616</span> });
+<span class="ln">617</span> stage.addEventListener(&#x27;pointermove&#x27;,e=&gt;{
+<span class="ln">618</span>  if(!drag||e.pointerId!==drag.pointerId)return;
+<span class="ln">619</span>  seg.dragPreview={startId:drag.startId,...positionAt(e)};v25RequestDraw()
+<span class="ln">620</span> });
+<span class="ln">621</span> function stop(e){
+<span class="ln">622</span>  if(!drag||drag.pointerId!==e.pointerId)return;
+<span class="ln">623</span>  const start=drag.startId,target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.(&#x27;.rec-char&#x27;);
+<span class="ln">624</span>  const end=target&amp;&amp;stage.contains(target)?target.dataset.id:null;
+<span class="ln">625</span>  drag=null;seg.dragPreview=null;
+<span class="ln">626</span>  try{if(stage.hasPointerCapture(e.pointerId))stage.releasePointerCapture(e.pointerId)}catch{}
+<span class="ln">627</span>  const route=v27Current(seg);
+<span class="ln">628</span>  if(e.type===&#x27;pointerup&#x27;&amp;&amp;end&amp;&amp;route){
+<span class="ln">629</span>   if(end!==start&amp;&amp;route.ids.at(-1)!==start&amp;&amp;route.ids.length&lt;V25_MAX_PATH)route.ids.push(start);
+<span class="ln">630</span>   v25AppendNode(seg,end)
+<span class="ln">631</span>  }else v25RequestDraw()
+<span class="ln">632</span> }
+<span class="ln">633</span> stage.addEventListener(&#x27;pointerup&#x27;,stop);stage.addEventListener(&#x27;pointercancel&#x27;,stop);
+<span class="ln">634</span> stage.addEventListener(&#x27;click&#x27;,e=&gt;{if(e.detail!==0)return;const node=e.target.closest?.(&#x27;.rec-char&#x27;);if(node)v25AppendNode(seg,node.dataset.id)});
+<span class="ln">635</span> body.querySelector(&#x27;.rec-stage-scroll&#x27;).addEventListener(&#x27;scroll&#x27;,v25RequestDraw)
+<span class="ln">636</span>}</div></details></section><section class="card" id="s637"><h2>执行本段文件匹配</h2><p class="muted">原文件第 637–654 行，18 行；区块 15 / 18</p><h3>职责</h3><p>从当前坐标生成导入条目匹配结果，更新成功/多条/无结果状态。</p><h3>输入与输出</h3><p>输入：片段、参考文本、导入条目；输出：seg.results、seg.status、UI 匹配行。</p><h3>人工审计解释</h3><div class="tip">已发现错误处理分支只更新错误提示，未同步清理上一轮成功结果显示。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>v23ProcessSegment()</code> <small>第 637 行</small>：按当前坐标匹配导入文件，并更新本段结果与状态。</div></div><details><summary>展开查看本块完整原始源码（第 637–654 行）</summary><div class="code"><span class="ln">637</span>function v23ProcessSegment(seg){
+<span class="ln">638</span> const scope=$(&#x27;segment-&#x27;+seg.id),ref=v23GetReference();
+<span class="ln">639</span> try{
+<span class="ln">640</span>  if(!ref.length)throw Error(&#x27;请先输入参考英文文本。&#x27;);
+<span class="ln">641</span>  if(!v23.importEntries.length)throw Error(&#x27;尚未导入文件。可以先继续重建坐标和折叠片段，文件匹配为可选功能。&#x27;);
+<span class="ln">642</span>  if(!seg.groups.length)throw Error(&#x27;请先增加至少一组。&#x27;);
+<span class="ln">643</span>  const a=v25Assigned(seg);if(a.conflicts.size)throw Error(&#x27;不同路径或重复引用的节点数字冲突，必须先纠正路径。&#x27;);
+<span class="ln">644</span>  v25SyncMappings(seg,a);
+<span class="ln">645</span>  const results=seg.mappings.map(m=&gt;{
+<span class="ln">646</span>   const pos=Number(m.position),matches=v23MatchesForCodes(m.codes,ref);
+<span class="ln">647</span>   return {position:pos,codes:m.codes,count:matches.length,matches}
+<span class="ln">648</span>  });
+<span class="ln">649</span>  seg.results=results;
+<span class="ln">650</span>  seg.status=results.some(r=&gt;!r.count)?&#x27;未找到匹配&#x27;:results.every(r=&gt;r.count===1)?&#x27;唯一匹配&#x27;:(seg.pathCheck?&#x27;已处理·字符匹配&#x27;:&#x27;匹配待复核&#x27;);
+<span class="ln">651</span>  scope.querySelector(&#x27;.seg-results&#x27;).textContent=results.map(r=&gt;`条目${r.position}：${r.codes} → ${r.count}条匹配${r.count&lt;=10?&#x27; · &#x27;+r.matches.join(&#x27;, &#x27;):&#x27; · &#x27;+r.matches.slice(0,10).join(&#x27;, &#x27;)+&#x27; …&#x27;}`).join(&#x27;\n&#x27;);
+<span class="ln">652</span>  v25SetNote(seg,&#x27;&#x27;);renderSegmentHeading(seg)
+<span class="ln">653</span> }catch(e){v25SetNote(seg,&#x27;文件匹配未完成：&#x27;+e.message,true)}
+<span class="ln">654</span>}</div></details></section><section class="card" id="s655"><h2>片段 UI、按钮绑定与保存折叠</h2><p class="muted">原文件第 655–718 行，64 行；区块 16 / 18</p><h3>职责</h3><p>动态生成每个片段界面，绑定新增组、选路径、删路径、导入匹配、临时保存并折叠。</p><h3>输入与输出</h3><p>输入：片段数据和按钮事件；输出：可交互的完整片段 UI。</p><h3>人工审计解释</h3><div class="tip">“保存本段并折叠”是界面内的折叠/状态操作，不等于自动写入本地磁盘。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>renderSegments()</code> <small>第 655 行</small>：为全部片段构建界面并绑定所有操作事件。</div></div><details><summary>展开查看本块完整原始源码（第 655–718 行）</summary><div class="code"><span class="ln">655</span>function renderSegments(){
+<span class="ln">656</span> const root=$(&#x27;segmentsRoot&#x27;);root.replaceChildren();
+<span class="ln">657</span> v23.segments.forEach((seg,idx)=&gt;{
+<span class="ln">658</span>  const sec=document.createElement(&#x27;section&#x27;);sec.className=&#x27;recover-segment&#x27;+(seg.closed?&#x27; closed&#x27;:&#x27;&#x27;);sec.id=&#x27;segment-&#x27;+seg.id;
+<span class="ln">659</span>  const head=document.createElement(&#x27;div&#x27;);head.className=&#x27;segment-head&#x27;;
+<span class="ln">660</span>  const title=document.createElement(&#x27;h3&#x27;);title.className=&#x27;seg-title&#x27;;title.textContent=seg.label;
+<span class="ln">661</span>  const st=document.createElement(&#x27;span&#x27;);st.className=&#x27;badge seg-state&#x27;;st.textContent=seg.status;
+<span class="ln">662</span>  const action=document.createElement(&#x27;div&#x27;);action.className=&#x27;actions&#x27;;
+<span class="ln">663</span>  const fold=document.createElement(&#x27;button&#x27;);fold.textContent=seg.closed?&#x27;展开 ▾&#x27;:&#x27;折叠 ▴&#x27;;
+<span class="ln">664</span>  fold.onclick=()=&gt;{seg.closed=!seg.closed;sec.classList.toggle(&#x27;closed&#x27;,seg.closed);fold.textContent=seg.closed?&#x27;展开 ▾&#x27;:&#x27;折叠 ▴&#x27;;if(!seg.closed)v25RequestDraw()};
+<span class="ln">665</span>  const del=document.createElement(&#x27;button&#x27;);del.className=&#x27;danger&#x27;;del.textContent=&#x27;删除片段&#x27;;del.onclick=()=&gt;{if(confirm(`删除 ${seg.label}？`)){v23.segments.splice(idx,1);renderSegments()}};
+<span class="ln">666</span>  action.append(fold,del);head.append(title,st,action);sec.append(head);
+<span class="ln">667</span>  const body=document.createElement(&#x27;div&#x27;);body.className=&#x27;segment-body&#x27;;
+<span class="ln">668</span>  body.innerHTML=`
+<span class="ln">669</span>   &lt;div class=&quot;field-grid&quot;&gt;&lt;label&gt;片段名称&lt;input class=&quot;crypto-input seg-label&quot; maxlength=&quot;70&quot; placeholder=&quot;片段名称&quot;&gt;&lt;/label&gt;&lt;/div&gt;
+<span class="ln">670</span>   &lt;h3 class=&quot;spaced&quot;&gt;本段路径管理 · 多选显示、单独编辑&lt;/h3&gt;
+<span class="ln">671</span>   &lt;div class=&quot;rec-routebar&quot;&gt;&lt;button class=&quot;rec-newPath primary&quot;&gt;＋ 新建路径&lt;/button&gt;&lt;button class=&quot;rec-showAll&quot;&gt;显示全部路径&lt;/button&gt;&lt;button class=&quot;rec-showNone&quot;&gt;空白视图&lt;/button&gt;&lt;button class=&quot;rec-deletePath danger&quot;&gt;删除当前路径&lt;/button&gt;&lt;span class=&quot;rec-route-status&quot;&gt;&lt;/span&gt;&lt;/div&gt;
+<span class="ln">672</span>   &lt;div class=&quot;rec-route-tabs&quot;&gt;&lt;/div&gt;
+<span class="ln">673</span>   &lt;div class=&quot;rec-route-sequences&quot;&gt;&lt;/div&gt;
+<span class="ln">674</span>   &lt;div class=&quot;small-note seg-length&quot;&gt;&lt;/div&gt;
+<span class="ln">675</span>   &lt;div class=&quot;rec-controls&quot;&gt;
+<span class="ln">676</span>    &lt;button class=&quot;seg-next-group primary&quot;&gt;＋ 新增下一画布组&lt;/button&gt;
+<span class="ln">677</span>    &lt;label&gt;指定条目位置 &lt;input class=&quot;crypto-input seg-group-number&quot; type=&quot;number&quot; min=&quot;1&quot; step=&quot;1&quot; placeholder=&quot;正整数位置&quot;&gt;&lt;/label&gt;
+<span class="ln">678</span>    &lt;button class=&quot;seg-add-group&quot;&gt;＋ 新增指定位置的组&lt;/button&gt;
+<span class="ln">679</span>    &lt;label&gt;每行显示 &lt;select class=&quot;seg-cols&quot;&gt;&lt;option value=&quot;1&quot;&gt;1组&lt;/option&gt;&lt;option value=&quot;2&quot;&gt;2组&lt;/option&gt;&lt;option value=&quot;3&quot;&gt;3组&lt;/option&gt;&lt;option value=&quot;4&quot;&gt;4组&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;
+<span class="ln">680</span>   &lt;/div&gt;
+<span class="ln">681</span>   &lt;div class=&quot;rec-stage-scroll&quot;&gt;&lt;div class=&quot;rec-stage&quot;&gt;&lt;div class=&quot;rec-groups&quot;&gt;&lt;/div&gt;&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; class=&quot;rec-arrow-svg&quot; aria-hidden=&quot;true&quot;&gt;&lt;/svg&gt;&lt;/div&gt;&lt;/div&gt;
+<span class="ln">682</span>   &lt;h3 class=&quot;spaced&quot;&gt;当前编辑路径 · 单次引用编辑&lt;/h3&gt;&lt;div class=&quot;rec-path-list&quot;&gt;&lt;/div&gt;
+<span class="ln">683</span>   &lt;div class=&quot;editbar&quot;&gt;&lt;button class=&quot;mini rec-moveLeft&quot;&gt;← 左移&lt;/button&gt;&lt;button class=&quot;mini rec-moveRight&quot;&gt;右移 →&lt;/button&gt;&lt;button class=&quot;mini rec-duplicateOne&quot;&gt;重复选中项&lt;/button&gt;&lt;button class=&quot;mini rec-deleteOne&quot;&gt;删除选中项&lt;/button&gt;&lt;button class=&quot;mini rec-insertMode&quot;&gt;在选中项后插入：关&lt;/button&gt;&lt;button class=&quot;mini rec-repeatLast&quot;&gt;重复末项&lt;/button&gt;&lt;button class=&quot;mini rec-undoPoint&quot;&gt;移除末项&lt;/button&gt;&lt;button class=&quot;mini rec-clearPath danger&quot;&gt;清空当前连线&lt;/button&gt;&lt;/div&gt;
+<span class="ln">684</span>   &lt;div class=&quot;rec-validation seg-path-state&quot;&gt;尚未匹配&lt;/div&gt;
+<span class="ln">685</span>   &lt;h3 class=&quot;spaced&quot;&gt;所有路径共同还原的四项坐标&lt;/h3&gt;&lt;pre class=&quot;rec-recovered-codes&quot;&gt;&lt;/pre&gt;
+<span class="ln">686</span>   &lt;div class=&quot;actions spaced&quot;&gt;&lt;button class=&quot;seg-process primary&quot;&gt;匹配本段导入文件（可选）&lt;/button&gt;&lt;button class=&quot;seg-complete&quot;&gt;保存本段并折叠&lt;/button&gt;&lt;/div&gt;
+<span class="ln">687</span>   &lt;div class=&quot;small-note seg-note&quot;&gt;&lt;/div&gt;&lt;pre class=&quot;rec-output seg-results&quot;&gt;&lt;/pre&gt;`;
+<span class="ln">688</span>  sec.append(body);root.append(sec);
+<span class="ln">689</span>  body.querySelector(&#x27;.seg-label&#x27;).value=seg.label;
+<span class="ln">690</span>  body.querySelector(&#x27;.seg-label&#x27;).oninput=e=&gt;{seg.label=e.target.value;renderSegmentHeading(seg)};
+<span class="ln">691</span>  body.querySelector(&#x27;.rec-newPath&#x27;).onclick=()=&gt;v27CreateRoute(seg);
+<span class="ln">692</span>  body.querySelector(&#x27;.rec-deletePath&#x27;).onclick=()=&gt;v27DeleteRoute(seg);
+<span class="ln">693</span>  body.querySelector(&#x27;.rec-showAll&#x27;).onclick=()=&gt;{seg.visiblePaths=new Set(seg.paths.map((_,i)=&gt;i));v27RenderRouteControls(seg);v25RenderBoard(seg)};
+<span class="ln">694</span>  body.querySelector(&#x27;.rec-showNone&#x27;).onclick=()=&gt;{seg.visiblePaths.clear();seg.activePath=-1;v27RenderRouteControls(seg);v25RenderBoard(seg)};
+<span class="ln">695</span>  body.querySelector(&#x27;.seg-group-number&#x27;).value=String(seg.groups.at(-1)?.position||1);
+<span class="ln">696</span>  body.querySelector(&#x27;.seg-cols&#x27;).value=String(seg.cols||2);
+<span class="ln">697</span>  body.querySelector(&#x27;.seg-cols&#x27;).onchange=e=&gt;{seg.cols=Number(e.target.value);v25RenderBoard(seg)};
+<span class="ln">698</span>  body.querySelector(&#x27;.seg-next-group&#x27;).onclick=()=&gt;{const pos=seg.groups.length?seg.groups.at(-1).position+1:1;v25AddGroup(seg,pos);body.querySelector(&#x27;.seg-group-number&#x27;).value=String(pos)};
+<span class="ln">699</span>  body.querySelector(&#x27;.seg-add-group&#x27;).onclick=()=&gt;v25AddGroup(seg,body.querySelector(&#x27;.seg-group-number&#x27;).value);
+<span class="ln">700</span>  body.querySelector(&#x27;.rec-repeatLast&#x27;).onclick=()=&gt;{const p=v27Current(seg);const last=p?.ids.at(-1);if(last)v25AppendNode(seg,last)};
+<span class="ln">701</span>  body.querySelector(&#x27;.rec-undoPoint&#x27;).onclick=()=&gt;v25ModifyPath(seg,p=&gt;p.pop());
+<span class="ln">702</span>  body.querySelector(&#x27;.rec-clearPath&#x27;).onclick=()=&gt;{const p=v27Current(seg);if(!p?.ids.length)return;if(!confirm(&#x27;清空当前编辑路径的连线？不会影响其他路径、字符或组。&#x27;))return;p.ids=[];p.selectedIndex=-1;v25Invalidate(seg);v25RenderBoard(seg)};
+<span class="ln">703</span>  body.querySelector(&#x27;.rec-moveLeft&#x27;).onclick=()=&gt;v25ModifyPath(seg,(p,r)=&gt;{const i=r.selectedIndex;[p[i-1],p[i]]=[p[i],p[i-1]];r.selectedIndex--});
+<span class="ln">704</span>  body.querySelector(&#x27;.rec-moveRight&#x27;).onclick=()=&gt;v25ModifyPath(seg,(p,r)=&gt;{const i=r.selectedIndex;[p[i+1],p[i]]=[p[i],p[i+1]];r.selectedIndex++});
+<span class="ln">705</span>  body.querySelector(&#x27;.rec-duplicateOne&#x27;).onclick=()=&gt;v25ModifyPath(seg,(p,r)=&gt;{p.splice(r.selectedIndex+1,0,p[r.selectedIndex]);r.selectedIndex++});
+<span class="ln">706</span>  body.querySelector(&#x27;.rec-deleteOne&#x27;).onclick=()=&gt;v25ModifyPath(seg,(p,r)=&gt;p.splice(r.selectedIndex,1));
+<span class="ln">707</span>  body.querySelector(&#x27;.rec-insertMode&#x27;).onclick=()=&gt;{const p=v27Current(seg);if(p){p.insertAfter=!p.insertAfter;v25RenderPathSteps(seg,v25Assigned(seg))}};
+<span class="ln">708</span>  body.querySelector(&#x27;.seg-process&#x27;).onclick=()=&gt;v23ProcessSegment(seg);
+<span class="ln">709</span>  body.querySelector(&#x27;.seg-complete&#x27;).onclick=()=&gt;{
+<span class="ln">710</span>   const a=v25Assigned(seg);v25RefreshStatus(seg);
+<span class="ln">711</span>   seg.status=seg.pathCheck?&#x27;全部路径匹配·待人工核对&#x27;:a.conflicts.size?&#x27;节点冲突·待修正&#x27;:&#x27;已暂存·待继续&#x27;;
+<span class="ln">712</span>   seg.closed=true;sec.classList.add(&#x27;closed&#x27;);fold.textContent=&#x27;展开 ▾&#x27;;renderSegmentHeading(seg)
+<span class="ln">713</span>  };
+<span class="ln">714</span>  if(seg.results.length)body.querySelector(&#x27;.seg-results&#x27;).textContent=seg.results.map(x=&gt;`条目${x.position}：${x.count}条匹配${x.count&lt;=20?&#x27; · &#x27;+x.matches.join(&#x27;, &#x27;):&#x27;&#x27;}`).join(&#x27;\n&#x27;);
+<span class="ln">715</span>  v25WireBoard(seg,body);v27RenderRouteControls(seg);v25RenderBoard(seg)
+<span class="ln">716</span> });
+<span class="ln">717</span> v25RequestDraw()
+<span class="ln">718</span>}</div></details></section><section class="card" id="s719"><h2>工作进度导出与导入</h2><p class="muted">原文件第 719–766 行，48 行；区块 17 / 18</p><h3>职责</h3><p>保存参考文本、片段组、每条路径、连续字符与显示状态，导入并校验旧格式。</p><h3>输入与输出</h3><p>输入：当前重建会话或 JSON 文件；输出：session.json 或恢复会话状态。</p><h3>人工审计解释</h3><div class="tip">导入会保存原始 status 但清空 results，存在未重新验证即显示“唯一匹配”的风险。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>v23SaveProgress()</code> <small>第 719 行</small>：导出包含参考文本、字符序列和节点路径的工作进度 JSON。</div><div class="func"><code>v23LoadProgress()</code> <small>第 729 行</small>：验证并读取新旧工作进度，重建会话及画布。</div></div><details><summary>展开查看本块完整原始源码（第 719–766 行）</summary><div class="code"><span class="ln">719</span>function v23SaveProgress(){
+<span class="ln">720</span> try{
+<span class="ln">721</span>  if(!confirm(&#x27;工作进度JSON包含连续数字、路径和坐标线索，将以明文保存到本机。确认导出？&#x27;))return;
+<span class="ln">722</span>  const data={type:TYPE_SESSION,version:6,reference:$(&#x27;recoverSource&#x27;).value,
+<span class="ln">723</span>   segments:v23.segments.map(seg=&gt;({label:seg.label,groups:seg.groups.map(g=&gt;({key:g.key,position:g.position,lengths:[...g.lengths],modes:[...g.modes]})),
+<span class="ln">724</span>    paths:seg.paths.map(p=&gt;({sequence:p.sequence,pathIds:[...p.ids]})),activePath:seg.activePath,visiblePaths:[...seg.visiblePaths],status:seg.status,closed:seg.closed,cols:seg.cols}))};
+<span class="ln">725</span>  save(&#x27;session.json&#x27;,JSON.stringify(data,null,2)+&#x27;\n&#x27;,&#x27;application/json;charset=utf-8&#x27;);
+<span class="ln">726</span>  v23Status(&#x27;progressStatus&#x27;,&#x27;已导出明文JSON（包含各路径字符和连线）。请在离线设备保管。&#x27;)
+<span class="ln">727</span> }catch(e){v23Status(&#x27;progressStatus&#x27;,&#x27;导出失败：&#x27;+e.message)}
+<span class="ln">728</span>}
+<span class="ln">729</span>async function v23LoadProgress(file){
+<span class="ln">730</span> try{
+<span class="ln">731</span>  if(file.size&gt;8*1024*1024)throw Error(&#x27;进度文件超出8MB限制&#x27;);
+<span class="ln">732</span>  const data=JSON.parse(await file.text());
+<span class="ln">733</span>  if(data.type===&#x27;M4M05-encrypted-recovery-progress&#x27;)throw Error(&#x27;此文件使用不兼容的旧格式，无法直接导入。&#x27;);
+<span class="ln">734</span>  if(![TYPE_SESSION,&#x27;M4M05-recovery-progress&#x27;].includes(data.type)||![3,4,5,6].includes(data.version)||typeof data.reference!==&#x27;string&#x27;||data.reference.length&gt;100000||!Array.isArray(data.segments)||data.segments.length&gt;200)throw Error(&#x27;仅支持兼容格式的工作进度文件。&#x27;);
+<span class="ln">735</span>  const next=data.segments.map((s,i)=&gt;{
+<span class="ln">736</span>   if(!s||!Array.isArray(s.groups)||s.groups.length&gt;1500)throw Error(`片段${i+1}组数据无效`);
+<span class="ln">737</span>   const groups=s.groups.map((g,j)=&gt;({key:data.version===3?&#x27;g&#x27;+(j+1):String(g.key),position:Number(g.position),lengths:(g.lengths||[]).map(Number),modes:data.version===6?g.modes:[...LEGACY_COORD_MODES]}));
+<span class="ln">738</span>   if(groups.some(g=&gt;!/^g[1-9]\d*$/.test(g.key)||g.key.length&gt;30||!Number.isSafeInteger(g.position)||g.position&lt;1||g.lengths.length!==4||g.lengths.some(n=&gt;!Number.isInteger(n)||n&lt;1||n&gt;8)||!validModes(g.modes))||new Set(groups.map(g=&gt;g.key)).size!==groups.length)throw Error(`片段${i+1}组结构无效`);
+<span class="ln">739</span>   const allowed=new Set(groups.flatMap(g=&gt;g.lengths.flatMap((n,ci)=&gt;Array.from({length:n},(_,ti)=&gt;v25NodeId(g.key,ci,ti)))));
+<span class="ln">740</span>   let paths;
+<span class="ln">741</span>   if(data.version&gt;=5){
+<span class="ln">742</span>    if(!Array.isArray(s.paths)||s.paths.length&gt;250)throw Error(`片段${i+1}路径数量无效`);
+<span class="ln">743</span>    paths=s.paths.map((p,j)=&gt;{if(!p||typeof p.sequence!==&#x27;string&#x27;||p.sequence.length&gt;100000||!Array.isArray(p.pathIds)||p.pathIds.length&gt;V25_MAX_PATH||!p.pathIds.every(id=&gt;typeof id===&#x27;string&#x27;&amp;&amp;allowed.has(id)))throw Error(`片段${i+1}路径${j+1}包含无效数据`);return v27NewRoute(p.sequence,[...p.pathIds])})
+<span class="ln">744</span>   }else{
+<span class="ln">745</span>    if(typeof s.sequence!==&#x27;string&#x27;||s.sequence.length&gt;100000||!Array.isArray(s.pathIds)||s.pathIds.length&gt;V25_MAX_PATH)throw Error(`片段${i+1}旧版路径无效`);
+<span class="ln">746</span>    const groupByPosition=new Map(groups.map(g=&gt;[g.position,g]));
+<span class="ln">747</span>    const ids=data.version===3?s.pathIds.map(id=&gt;{
+<span class="ln">748</span>     if(typeof id!==&#x27;string&#x27;)throw Error(&#x27;旧版路径节点不是字符串&#x27;);
+<span class="ln">749</span>     const m=/^(\d+)\.(\d+)\.(\d+)$/.exec(id),group=m?groupByPosition.get(Number(m[1])+1):null;
+<span class="ln">750</span>     if(!group)throw Error(`片段${i+1}旧版路径找不到组：${id}`);
+<span class="ln">751</span>     return v25NodeId(group.key,Number(m[2]),Number(m[3]));
+<span class="ln">752</span>    }):s.pathIds;
+<span class="ln">753</span>    if(!ids.every(id=&gt;typeof id===&#x27;string&#x27;&amp;&amp;allowed.has(id)))throw Error(`片段${i+1}旧版存在无效节点`);
+<span class="ln">754</span>    paths=[v27NewRoute(s.sequence,ids)]
+<span class="ln">755</span>   }
+<span class="ln">756</span>   const seg=v23NewSeg();seg.label=String(s.label||`片段${i+1}`).slice(0,70);seg.groups=groups;
+<span class="ln">757</span>   seg.nextGroupKey=groups.reduce((max,g)=&gt;Math.max(max,Number(g.key.slice(1))+1),1);
+<span class="ln">758</span>   seg.paths=paths;seg.activePath=data.version&gt;=5&amp;&amp;Number.isInteger(s.activePath)&amp;&amp;s.activePath&gt;=-1&amp;&amp;s.activePath&lt;paths.length?s.activePath:paths.length?0:-1;
+<span class="ln">759</span>   seg.visiblePaths=new Set(data.version&gt;=5&amp;&amp;Array.isArray(s.visiblePaths)?s.visiblePaths.filter(x=&gt;Number.isInteger(x)&amp;&amp;x&gt;=0&amp;&amp;x&lt;paths.length):paths.map((_,j)=&gt;j));
+<span class="ln">760</span>   seg.status=String(s.status||&#x27;待核对&#x27;).slice(0,80);seg.closed=!!s.closed;seg.cols=[1,2,3,4].includes(s.cols)?s.cols:2;
+<span class="ln">761</span>   seg.results=[];seg.pathCheck=false;v25SyncMappings(seg);return seg
+<span class="ln">762</span>  });
+<span class="ln">763</span>  $(&#x27;recoverSource&#x27;).value=data.reference;v23.segments=next;renderSegments();v23SourceChanged();
+<span class="ln">764</span>  v23Status(&#x27;progressStatus&#x27;,`已导入${next.length}个片段，各片段路径、连续数字与组已重建。请展开逐段核对。`)
+<span class="ln">765</span> }catch(e){v23Status(&#x27;progressStatus&#x27;,&#x27;导入失败：&#x27;+e.message)}
+<span class="ln">766</span>}</div></details></section><section class="card" id="s767"><h2>外部 TXT 数据导入及启动绑定</h2><p class="muted">原文件第 767–790 行，24 行；区块 18 / 18</p><h3>职责</h3><p>导入本地英文条目、数量限制、关联输入控件和初始化。</p><h3>输入与输出</h3><p>输入：用户选择的纯文本文件；输出：v23.importEntries 数组及导入状态。</p><h3>人工审计解释</h3><div class="tip">导入新文件后没有通知所有片段旧结果失效；导入只保留在内存，不写入进度 JSON。</div><h3>逐函数说明</h3><div class="funcs"><div class="func"><code>v23LoadDataFile()</code> <small>第 767 行</small>：读取 TXT 英文条目并放进内存数组。</div><div class="func"><code>v23SourceChanged()</code> <small>第 775 行</small>：更新参考英文文本计数显示。</div></div><details><summary>展开查看本块完整原始源码（第 767–790 行）</summary><div class="code"><span class="ln">767</span>async function v23LoadDataFile(file){
+<span class="ln">768</span> try{
+<span class="ln">769</span>  if(file.size&gt;120000)throw Error(&#x27;导入文件超过120KB限制&#x27;);
+<span class="ln">770</span>  const words=(await file.text()).trim().split(/\s+/).map(s=&gt;s.toLowerCase());
+<span class="ln">771</span>  if(!words.length||words.some(x=&gt;!/^[a-z]+$/.test(x)))throw Error(&#x27;导入文件需包含英文条目（只允许 a–z，使用空格或换行分隔）。&#x27;);
+<span class="ln">772</span>  v23.importEntries=words;v23Status(&#x27;importDataStatus&#x27;,`已导入 ${words.length} 条数据（仅在本地内存中使用）。`);
+<span class="ln">773</span> }catch(e){v23.importEntries=[];v23Status(&#x27;importDataStatus&#x27;,&#x27;导入失败：&#x27;+e.message)}
+<span class="ln">774</span>}
+<span class="ln">775</span>function v23SourceChanged(){v23Status(&#x27;recSourceCount&#x27;,`参考英文文本：${v23GetReference().length} 词`) }
+<span class="ln">776</span>
+<span class="ln">777</span>$(&#x27;modeEncode&#x27;).onclick=()=&gt;v23SetMode(&#x27;encode&#x27;);$(&#x27;modeRecover&#x27;).onclick=()=&gt;v23SetMode(&#x27;recover&#x27;);
+<span class="ln">778</span>$(&#x27;showAllPaths&#x27;).onclick=()=&gt;{visibleRoutes=new Set(state.paths.map((_,i)=&gt;i));renderRoutes()};
+<span class="ln">779</span>$(&#x27;showNoPaths&#x27;).onclick=()=&gt;{visibleRoutes.clear();state.active=-1;selectedIndex=-1;insertAfter=false;renderRoutes()};
+<span class="ln">780</span>$(&#x27;newSegment&#x27;).onclick=v23AddSegment;
+<span class="ln">781</span>$(&#x27;recoverSource&#x27;).addEventListener(&#x27;input&#x27;,v23SourceChanged);
+<span class="ln">782</span>$(&#x27;importDataFile&#x27;).onchange=async e=&gt;{const f=e.target.files[0];e.target.value=&#x27;&#x27;;if(f)await v23LoadDataFile(f)};
+<span class="ln">783</span>$(&#x27;saveProgress&#x27;).onclick=v23SaveProgress;
+<span class="ln">784</span>$(&#x27;openProgress&#x27;).onclick=()=&gt;$(&#x27;progressFile&#x27;).click();
+<span class="ln">785</span>$(&#x27;progressFile&#x27;).onchange=async e=&gt;{const f=e.target.files[0];e.target.value=&#x27;&#x27;;if(f)await v23LoadProgress(f)};
+<span class="ln">786</span>v23SetupFolds();v23SourceChanged();window.addEventListener(&#x27;resize&#x27;,v25RequestDraw);
+<span class="ln">787</span>
+<span class="ln">788</span>&lt;/script&gt;
+<span class="ln">789</span>&lt;/body&gt;
+<span class="ln">790</span>&lt;/html&gt;</div></details></section><section class="card"><h2>收尾说明</h2><p>本报告完整收录原始 HTML 源代码，每行仅添加左侧原始行号，源代码字符保持一致。每个函数的解释围绕当前版本的真实调用与数据流，不以建议替代既定产品需求。</p></section></main></body></html>
