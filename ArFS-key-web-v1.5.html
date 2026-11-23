@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https: http:; img-src data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>ArFS Key Web · Metadata 工具</title>
+<style>
+:root{color-scheme:light;--bg:#f5f7fa;--panel:#fff;--ink:#182b3b;--muted:#607285;--line:#dbe4ec;--focus:#1762b2;--blue:#1768bf;--blue-soft:#ecf4fe;--red:#a12f3a;--red-soft:#fff2f3;--green:#1c7351;--green-soft:#ecf8f1;--radius:14px}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--ink);margin:0;font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.5;font-size:14px}
+main{max-width:1030px;padding:36px 22px 72px;margin:auto}header{display:flex;justify-content:space-between;gap:20px;align-items:start;margin-bottom:24px}.eyebrow{font-size:12px;letter-spacing:.15em;color:var(--blue);font-weight:750;margin:0 0 9px}.app-title{font-size:30px;font-weight:750;letter-spacing:-.8px;line-height:1.18;margin:0 0 10px}.subtitle{margin:0;color:var(--muted);max-width:700px}.scope{display:flex;gap:7px;flex-wrap:wrap;justify-content:end;margin:10px 0 0}.pill{border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:12px;background:#fff;color:#496074;white-space:nowrap}
+.notice{margin-bottom:22px;border:1px solid #e9d7a4;background:#fffaf0;color:#6c5529;border-radius:12px;padding:14px 18px}.notice strong{color:#6d4b0e}.tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);margin-bottom:22px;padding-bottom:10px}.tabs button{background:transparent;border:0;color:var(--muted);font:inherit;font-size:15px;font-weight:700;cursor:pointer;padding:12px 18px;border-radius:10px}.tabs button:hover{background:#eaf0f6}.tabs button.active{background:var(--blue-soft);color:var(--blue)}
+section[hidden],div[hidden],button[hidden],p[hidden]{display:none!important}.grid{display:grid;grid-template-columns:1fr 1fr;gap:19px}.card{border:1px solid var(--line);background:var(--panel);border-radius:var(--radius);padding:24px;margin-bottom:18px;box-shadow:0 4px 18px rgba(16,40,70,.025)}.card h2{font-size:17px;letter-spacing:-.25px;margin:0 0 5px}.card h3{font-size:15px;margin:0 0 8px}.help{color:var(--muted);font-size:12px;margin:3px 0 18px}.field{margin-top:18px}.field label{display:block;font-weight:650;font-size:13px;margin-bottom:7px}.field small{display:block;color:var(--muted);font-size:12px;margin-top:5px}.field input,.field textarea,.field select{width:100%;border:1px solid #cdd9e4;padding:11px 12px;background:#fff;border-radius:9px;outline:none;font:inherit;color:var(--ink);min-width:0}.field input:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #166bbd22}.field input[type=file]{font-size:12px}.field input[type=file]::file-selector-button{background:#edf3fa;border:0;padding:9px 11px;border-radius:7px;color:var(--ink);font-weight:650;margin-right:12px;cursor:pointer}.field textarea{min-height:153px;resize:vertical}.buttons{display:flex;gap:11px;flex-wrap:wrap;align-items:center;margin-top:22px}.button{font:inherit;font-weight:730;border-radius:9px;border:1px solid transparent;background:var(--blue);color:white;padding:11px 18px;cursor:pointer}.button:hover:not(:disabled){filter:brightness(.95)}.button.secondary{background:#fff;border-color:#afc5dc;color:#234d74}.button.danger{background:#7d293b}.button:disabled{opacity:.52;cursor:not-allowed}.status{padding:13px 14px;border:1px solid #d8e6f7;border-radius:9px;background:#eff5fd;color:#204d80;margin-top:18px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.status.ok{border-color:#bfe2cc;background:var(--green-soft);color:var(--green)}.status.error{border-color:#efc5c9;background:var(--red-soft);color:var(--red)}.status.info{border-color:#d8e6f7;background:#eff5fd;color:#204d80}.result-row{padding:9px 0;display:flex;justify-content:space-between;gap:18px;border-bottom:1px solid #edf1f5;font-size:13px;align-items:flex-start}.result-row span{color:#6b7c8b;white-space:nowrap}.result-row strong{word-break:break-all;text-align:right;font-weight:600}.results{margin-top:12px}.preview-panel{margin-top:10px}.tx-card{padding:14px 16px;border:1px solid var(--line);border-radius:11px;background:#fbfdff;margin-top:11px;overflow-wrap:anywhere}.tx-card>a{font-weight:720}.tx-card .result-row{font-size:12px}.muted{color:var(--muted)}a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}.tiny{font-size:12px;color:var(--muted)}.alert-text{color:var(--red);font-weight:600}.compact{max-width:760px}.caption-foot{border-top:1px solid var(--line);padding-top:19px;margin-top:40px;font-size:12px;color:var(--muted)}.mini{font-size:12px;color:#54758d;background:#f2f7fc;display:inline-block;padding:5px 9px;border-radius:7px;margin-bottom:9px}.network-card{padding:18px 24px}.network-card summary{cursor:pointer;font-weight:750;font-size:16px}.network-card .field{margin-top:12px}.network-card .help{margin:8px 0 10px}.endpoint-note{margin:10px 0 0;color:var(--muted);font-size:12px}.endpoint-preset{margin-top:6px!important;font-size:12px!important;cursor:pointer;background:#f6faff!important;color:#275377!important;padding:8px 9px!important}.fee-panel{padding:14px;border:1px solid var(--line);border-radius:11px;background:#fbfdff;margin-top:20px}.fee-panel summary{font-weight:700}.fee-panel .field{margin-top:10px}.check-row{display:flex;align-items:center;gap:9px;font-weight:700}.check-row input{width:17px;height:17px;accent-color:var(--blue)}
+@media(max-width:720px){main{padding:23px 12px 60px}header{display:block}.app-title{font-size:25px}.scope{justify-content:start}.grid{grid-template-columns:1fr;gap:0}.card{padding:18px}.tabs button{padding:10px 12px;font-size:14px}.result-row{display:block}.result-row strong{display:block;text-align:left;margin-top:3px}}
+</style>
+</head>
+<body>
+<main>
+<header><div><p class="eyebrow">ARWEAVE / ARFS PUBLIC METADATA</p><h1 class="app-title">ArFS Key Web <span style="font-size:14px;color:#607285;font-weight:600">单文件版 1.5</span></h1><p class="subtitle">更新已有公开文件的 Metadata；通过唯一自定义标签 <code>key</code> 检索交易。不重新上传文件正文。</p></div><div class="scope"><span class="pill">单个 HTML</span><span class="pill">无外部脚本</span><span class="pill">无服务端账户</span></div></header>
+<div class="notice"><strong>私钥范围：</strong>仅在「更新」操作中读取你选择的 Arweave JWK，浏览器内签名；本页不使用第三方脚本，不把原始 JWK 发送到网关或 Turbo。请只打开自己保存、核对过的本地 HTML。查询和验证无需钱包。<br><span class="tiny">联网仅访问你自行配置的 GraphQL、Metadata 读取、Turbo 上传端点；开启费用查询时才使用另外两个可配置的费用接口。不会自动切换网关。上传公开、不可撤销，可能收费；接口接收不等于主网确认。</span></div>
+<details class="card network-card" open><summary>网络端点设置（可自行配置）</summary><p class="help">GraphQL 查询、文件 Metadata 读取、Turbo 上传可以分别配置。从列表选择常用地址或手动输入。只会填写地址，不会测试或自动切换；设置仅在当前页面内有效。</p><div class="grid"><div class="field"><label for="graphqlEndpoint">GraphQL 查询地址（完整 URL）</label><input id="graphqlEndpoint" type="url" autocomplete="off" spellcheck="false" value="https://arweave.net/graphql"><select id="graphqlPreset" class="endpoint-preset" aria-label="常用 GraphQL 地址"><option value="">选择常用 GraphQL 地址（或自行输入）</option><option value="https://arweave.net/graphql">arweave.net/graphql</option><option value="https://turbo-gateway.com/graphql">turbo-gateway.com/graphql</option><option value="https://arweave-search.goldsky.com/graphql">arweave-search.goldsky.com/graphql</option></select><small>关键词检索及根据 Tx ID 读取交易索引使用</small></div><div class="field"><label for="dataGateway">Metadata 数据读取网关（基础 URL）</label><input id="dataGateway" type="url" autocomplete="off" spellcheck="false" value="https://arweave.net"><select id="dataPreset" class="endpoint-preset" aria-label="常用 Metadata 读取网关"><option value="">选择常用 Metadata 读取地址（或自行输入）</option><option value="https://arweave.net">arweave.net</option><option value="https://turbo-gateway.com">turbo-gateway.com</option></select><small>用于读取 &lt;基础 URL&gt;/&lt;Metadata Tx ID&gt;</small></div></div><div class="field"><label for="uploadEndpoint">Turbo 签名 Data Item 上传接口（完整 URL）</label><input id="uploadEndpoint" type="url" autocomplete="off" spellcheck="false" value="https://upload.ardrive.io/v1/tx"><select id="uploadPreset" class="endpoint-preset" aria-label="常用 Turbo 上传接口"><option value="">选择 Turbo 上传接口（或自行输入）</option><option value="https://upload.ardrive.io/v1/tx">upload.ardrive.io/v1/tx（主网）</option></select><small>只接收本地生成的签名 ANS-104 二进制；不发送钱包 JSON</small></div><div class="buttons"><button id="btnTestGateway" class="button secondary" type="button">测试 GraphQL 连接</button></div><div id="endpointStatus" class="status info" hidden aria-live="polite"></div><p class="endpoint-note">本地 file:// 网页能否连接还取决于网关 CORS 策略。请勿将钱包导入未验证的远程页面。HTTP 地址只能用于隔离测试环境。</p></details>
+<nav class="tabs" role="tablist" aria-label="功能"><button id="tab-update" class="active" role="tab" aria-selected="true">Metadata 更新</button><button id="tab-find" role="tab" aria-selected="false">关键词检索</button><button id="tab-verify" role="tab" aria-selected="false">交易验证</button></nav>
+<section id="updateTab" role="tabpanel"><div class="grid"><div class="card"><h2>更新来源</h2><p class="help">只支持 Public ArFS File Metadata。不会改变原始文件 dataTxId。</p><div class="field"><label for="sourceId">来源 Metadata Tx ID（可用历史版本）</label><input id="sourceId" autocomplete="off" spellcheck="false" placeholder="43 字符交易 ID"></div><div class="field"><label for="walletFile">选择 Arweave 钱包 JSON</label><input id="walletFile" type="file" accept=".json,application/json"><small>仅本次操作使用，不会写入网页或浏览器存储。</small></div><div class="field"><label for="keywords">关键词（每行一个 <code>key</code>）</label><textarea id="keywords" spellcheck="false" placeholder="第 1 个关键词&#10;第 2 个关键词&#10;可以重复"></textarea><small>自定义 Tag 名固定为 <code>key</code>；数量与内容由输入决定，重复关键词保留。</small></div><div class="fee-panel"><label class="check-row" for="feeEnabled"><input id="feeEnabled" type="checkbox" checked>启用发布前费用查询（可关闭）</label><p class="tiny">启用：预检和发布前查看报价与免费额度；接口不可达时可关闭后重新预检。费用 API 应对应实际 Turbo 上传服务，报价仅供参考。关闭：不连接任何费用 API，实际费用未知，仍可人工确认发布。</p><div id="feeSettings"><div class="field"><label for="feePriceUrl">报价 API 地址模板</label><input id="feePriceUrl" autocomplete="off" spellcheck="false" value="https://turbo.ardrive.io/v1/price/bytes/{byteCount}"><small>用 {byteCount} 表示完整已签名 Data Item 字节数</small></div><div class="field"><label for="feeFreeUrl">免费额度 API 地址模板</label><input id="feeFreeUrl" autocomplete="off" spellcheck="false" value="https://turbo.ardrive.io/v1/account/free?address={walletAddress}"><small>用 {walletAddress} 表示当前钱包公开地址；不会发送 JWK</small></div></div><div id="feeResults" class="results"></div></div><div class="buttons"><button id="btnPreview" class="button">预检 Metadata</button></div><div id="previewStatus" class="status info" hidden aria-live="polite"></div></div><div class="card"><h2>预检结果</h2><p class="help">预检读取你指定的 Metadata 交易并验证钱包 Owner，不检查是否为最新版本；使用该交易的原始 Metadata 正文生成新版本，不自动合并其他版本的数据。</p><div id="previewResults" class="results"></div><div id="publishPanel" hidden><hr style="border:0;border-top:1px solid #dbe4ec;margin:20px 0"><h3>发布确认</h3><p class="tiny">预检通过后才可发布。使用预检时指定的 Metadata 内容在本地签名，然后提交 Turbo。</p><div class="field"><label for="confirmText">输入 <code>PUBLISH</code></label><input id="confirmText" autocomplete="off" spellcheck="false" placeholder="PUBLISH"></div><div class="buttons"><button id="btnPublish" class="button danger">确认发布新 Metadata</button></div></div><div id="publishStatus" class="status info" hidden aria-live="polite"></div><div id="publishResults" class="results" aria-label="上一次发布结果"></div><div class="buttons"><button id="btnReceipt" class="button secondary" hidden>保存本地 JSON 回执</button></div></div></div></section>
+<section id="findTab" role="tabpanel"><div class="card compact"><span class="mini">只按 key 标签过滤，不限制 Entity-Type</span><h2>查找 Metadata 交易</h2><p class="help">时间范围依据 <code>block.timestamp</code>（区块时间），不是交易自行填写的 <code>Unix-Time</code> 标签。</p><div class="field"><label for="findWord">key 关键词</label><input id="findWord" placeholder="例如：去中心化" spellcheck="false"></div><div class="grid"><div class="field"><label for="fromTime">开始（包含，可选）</label><input id="fromTime" placeholder="2026-11-01T00:00:00Z" spellcheck="false"></div><div class="field"><label for="toTime">结束（不包含，可选）</label><input id="toTime" placeholder="2026-11-08T00:00:00Z" spellcheck="false"></div></div><div class="field" style="max-width:180px"><label for="findLimit">返回条数</label><input id="findLimit" type="number" min="1" max="100" value="20"></div><div class="buttons"><button id="btnFind" class="button">按条件查询</button></div><div id="findStatus" class="status info" hidden aria-live="polite"></div><div id="findResults" class="results"></div></div></section>
+<section id="verifyTab" role="tabpanel"><div class="card compact"><h2>查看交易信息</h2><p class="help">查看单个网关提供的区块高度、File-Id、原文件 Data Tx ID、Owner 与 key。此处不进行完整签名链验证。</p><div class="field"><label for="verifyId">Metadata Tx ID</label><input id="verifyId" placeholder="43 字符交易 ID" autocomplete="off" spellcheck="false"></div><div class="buttons"><button id="btnVerify" class="button">验证 / 查看</button></div><div id="verifyStatus" class="status info" hidden aria-live="polite"></div><div id="verifyResults" class="results"></div></div></section>
+<footer class="caption-foot">本工具通过配置的网关读取交易、通过配置的 Turbo 接口发送浏览器内签名的 ANS-104 Data Item。源码与页面一起保存于此 HTML。未使用 analytics、CDN 或其他站点脚本。请在正式主网发布前使用可承担风险的测试钱包验证。</footer>
+</main>
+<script>
+'use strict';
+/* ArFS Key Web — standalone browser implementation (no external scripts).
+   Scope: public ArFS file Metadata-only revision, arbitrary repeated 'key' tags,
+   read-only GQL search and status. Client-signed ANS-104 submitted to Turbo.
+   Protocol: https://github.com/ArweaveTeam/arweave-standards/blob/master/ans/ANS-104.md */
+// Only addresses entered in this page are contacted; no automatic fallback.
+const ENDPOINT_FIELDS=['graphqlEndpoint','dataGateway','uploadEndpoint'];
+function configuredUrl(id,label){
+  const raw=$(id).value.trim();assert(raw,`缺少${label}`);
+  let url;try{url=new URL(raw);}catch{throw new Error(`${label}不是有效 URL`);}
+  assert(url.protocol==='https:'||url.protocol==='http:',`${label}必须使用 HTTP/HTTPS`);
+  assert(url.hostname&&!url.username&&!url.password&&!url.search&&!url.hash,`${label}不能含账号、密码、查询或锚点`);
+  return url.href.replace(/\/$/,'');
+}
+function endpoints(){return {graphql:configuredUrl('graphqlEndpoint','GraphQL 端点'),data:configuredUrl('dataGateway','Metadata 读取网关'),upload:configuredUrl('uploadEndpoint','Turbo 上传端点')};}
+function dataUrl(id){return endpoints().data+'/'+txId(id);}
+function networkFailure(kind,url,error){return new Error(`${kind}失败：${url}。${error?.message||error}；请检查网络或 CORS，网页不能绕过网关限制。`);}
+
+const KEY='key';
+const CORE=['ArFS','Content-Type','Drive-Id','Entity-Type','File-Id','Parent-Folder-Id'];
+const TX_RE=/^[A-Za-z0-9_-]{43}$/;
+const enc=new TextEncoder();
+const dec=new TextDecoder('utf-8',{fatal:true});
+const $=id=>document.getElementById(id);
+let prepared=null;
+let privateSigningKey=null;
+let signingAddress=null;
+let busy=false;
+let previewRevision=0;
+let publishLocked=false;
+const PUBLISH_INPUTS=['sourceId','keywords','walletFile','graphqlEndpoint','dataGateway','uploadEndpoint','graphqlPreset','dataPreset','uploadPreset','feeEnabled','feePriceUrl','feeFreeUrl'];
+function assert(ok,message){if(!ok)throw new Error(message);}
+function txId(value){const x=String(value||'').trim();assert(TX_RE.test(x),'交易 ID 必须为 43 位 base64url 字符串');return x;}
+function bytes(text){return enc.encode(String(text));}
+function join(...parts){const total=parts.reduce((n,a)=>n+a.length,0);const out=new Uint8Array(total);let pos=0;for(const a of parts){out.set(a,pos);pos+=a.length;}return out;}
+function b64url(raw){let s='';for(let i=0;i<raw.length;i+=0x8000)s+=String.fromCharCode(...raw.subarray(i,i+0x8000));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+function unb64url(text){assert(typeof text==='string'&&/^[A-Za-z0-9_-]+$/.test(text),'无效 base64url');const s=text.replace(/-/g,'+').replace(/_/g,'/');const v=atob(s+'='.repeat((4-s.length%4)%4));return Uint8Array.from(v,c=>c.charCodeAt(0));}
+async function hash(name,b){return new Uint8Array(await crypto.subtle.digest(name,b));}
+async function addressFromJwk(jwk){assert(jwk?.kty==='RSA'&&typeof jwk.n==='string'&&typeof jwk.d==='string','请选择有效的 Arweave RSA JWK');return b64url(await hash('SHA-256',unb64url(jwk.n)));}
+async function loadKey(file){assert(!!globalThis.crypto?.subtle,'浏览器不支持 WebCrypto 安全上下文；请用支持本地 file:// 的现代浏览器打开。');assert(file,'请先选择 ardrive-wallet.json');let jwk;try{jwk=JSON.parse(await file.text());}catch{throw new Error('钱包文件不是有效 JSON');}
+  const address=await addressFromJwk(jwk);
+  const owner=unb64url(jwk.n);
+  assert(owner.length===512,'ANS-104 本页面支持 Arweave RSA-4096 JWK（模数 512 bytes）');
+  const fields=['kty','n','e','d','p','q','dp','dq','qi'];
+  const keydata=Object.fromEntries(fields.filter(x=>typeof jwk[x]==='string').map(x=>[x,jwk[x]]));
+  let cryptoKey;try{cryptoKey=await crypto.subtle.importKey('jwk',keydata,{name:'RSA-PSS',hash:'SHA-256'},false,['sign']);}
+  catch{throw new Error('浏览器无法导入该 JWK 进行 RSA-PSS 签名');}
+  return {address,owner,cryptoKey};
+}
+function val(tags,name){return tags.filter(x=>x.name===name).map(x=>x.value);}
+function one(tags,name){const values=val(tags,name);assert(values.length===1,`Metadata 的 ${name} 标签数量不是 1`);return values[0];}
+function normalizeKeywords(value){const entries=value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);assert(entries.length>0,'请至少输入一条 key 关键词');for(const s of entries)assert(!/[\x00-\x1f\x7f]/.test(s),'关键词不得含控制字符');return entries;}
+function makeTags(original,words,time){const result=CORE.map(name=>({name,value:one(original,name)}));result.push({name:'Unix-Time',value:String(time)});for(const w of words)result.push({name:KEY,value:w});return result;}
+function validateSource(tx,body,owner){assert(tx&&Array.isArray(tx.tags),'GraphQL 未返回完整来源 Metadata');assert(tx.owner?.address===owner,'钱包地址与来源 Metadata Owner 不一致');
+  const tags=tx.tags;
+  assert(one(tags,'Entity-Type')==='file','来源不是 ArFS 文件 Metadata');
+  assert(/^application\/json(?:\s*;|$)/i.test(one(tags,'Content-Type')),'仅支持公开 JSON Metadata');
+  assert(!val(tags,'Cipher').length&&!val(tags,'Cipher-IV').length,'不支持 Private Drive / 加密 Metadata');
+  const fileId=one(tags,'File-Id'),driveId=one(tags,'Drive-Id'),parentId=one(tags,'Parent-Folder-Id'),arfs=one(tags,'ArFS');
+  assert(fileId&&driveId&&parentId&&arfs,'来源缺失必要的 ArFS 标识');
+  assert(body&&typeof body==='object'&&!Array.isArray(body),'Metadata JSON 必须为对象');
+  const dataTxId=txId(body.dataTxId);
+  assert(typeof body.name==='string'&&body.name,'Metadata JSON 缺少文件名');
+  return {fileId,driveId,parentId,arfs,dataTxId,name:body.name};
+}
+async function getJson(response,subject){if(!response.ok)throw new Error(`${subject} 失败：HTTP ${response.status}`);try{return await response.json();}catch{throw new Error(`${subject} 返回非 JSON`);}}
+async function gql(query,variables={}){let response;
+  const url=endpoints().graphql;
+  try{response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,variables}),signal:AbortSignal.timeout(25000)});}
+  catch(e){throw networkFailure('GraphQL 查询',url,e);}
+  const j=await getJson(response,'GraphQL '+url);
+  if(j.errors?.length)throw new Error('GraphQL 错误：'+JSON.stringify(j.errors).slice(0,500));
+  assert(j.data,'GraphQL 响应缺失 data');return j.data;
+}
+async function byId(id){const d=await gql(`query($ids:[ID!]){transactions(ids:$ids,first:1){edges{node{id owner{address} tags{name value} block{height timestamp}}}}}`,{ids:[txId(id)]});
+  const tx=d.transactions?.edges?.[0]?.node;assert(tx&&tx.id===id,'网关暂未索引此 Metadata 交易');return tx;
+}
+async function readMetadata(id){const url=dataUrl(id);let r;try{r=await fetch(url,{signal:AbortSignal.timeout(30000)});}catch(e){throw networkFailure('Metadata 读取',url,e);}assert(r.ok,`读取 Metadata 失败：${url} · HTTP ${r.status}`);const raw=new Uint8Array(await r.arrayBuffer());assert(raw.length<=2*1024*1024,'Metadata JSON 超过当前工具 2 MiB 上限');let json;try{json=JSON.parse(dec.decode(raw));}catch{throw new Error('Metadata 正文无法解析为公开 JSON');}return {raw,json};}
+function parseTime(text,label){if(!text)return null;const m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/.exec(text);assert(m,`${label} 需要含时区的 ISO 8601 时间`);const [year,month,day,hour,minute,second]=m.slice(1,7).map(Number);const d=new Date(0);d.setUTCFullYear(year,month,0);assert(month>=1&&month<=12&&day>=1&&day<=d.getUTCDate()&&hour<24&&minute<60&&second<60,`${label} 日期时间无效`);const time=Date.parse(text);assert(Number.isFinite(time),`${label} 日期时间无效`);return time;}
+async function findKey(word,from,to,limit){assert(word.trim(),'请输入 key 关键词');assert(Number.isInteger(limit)&&limit>=1&&limit<=100,'显示数量必须在 1–100');const lower=parseTime(from,'起始时间'),upper=parseTime(to,'结束时间');assert(lower===null||upper===null||lower<upper,'起始时间必须早于结束时间');
+  const timeMode=lower!==null||upper!==null;
+  // Date search: paginate before time-filtering. Non-time search retains original first-page behavior.
+  const query=timeMode?
+   `query($tags:[TagFilter!],$after:String){transactions(tags:$tags,sort:HEIGHT_DESC,first:100,after:$after){pageInfo{hasNextPage} edges{cursor node{id owner{address} tags{name value} block{height timestamp}}}}}`:
+   `query($tags:[TagFilter!],$first:Int!){transactions(tags:$tags,sort:HEIGHT_DESC,first:$first){edges{node{id owner{address} tags{name value} block{height}}}}}`;
+  const tags=[{name:KEY,values:[word.trim()]}];if(!timeMode){const d=await gql(query,{tags,first:limit});return {items:(d.transactions?.edges||[]).map(e=>e.node),truncated:false,unknown:0,timeMode:false};}
+  const items=[],seen=new Set();let unknown=0,truncated=false,after=null;const cursors=new Set();
+  while(true){const d=await gql(query,{tags,after});const result=d.transactions,edges=result?.edges;assert(Array.isArray(edges)&&typeof result?.pageInfo?.hasNextPage==='boolean','时间查询分页不完整');
+    if(!edges.length){assert(!result.pageInfo.hasNextPage,'时间查询分页异常');break;}
+    for(const e of edges){const tx=e.node;assert(tx?.id&&Array.isArray(tx.tags),'GraphQL 返回不完整记录');if(seen.has(tx.id))continue;seen.add(tx.id);
+      const time=tx.block?.timestamp;if(!Number.isSafeInteger(time)||time<0){unknown++;continue;}
+      const m=time*1000;if((lower===null||m>=lower)&&(upper===null||m<upper)){if(items.length>=limit){truncated=true;break;}items.push(tx);}
+    }
+    if(truncated||!result.pageInfo.hasNextPage)break;
+    const next=edges.at(-1)?.cursor;assert(typeof next==='string'&&next&&!cursors.has(next),'时间查询游标无效');cursors.add(next);after=next;
+  }
+  return {items,truncated,unknown,timeMode:true};
+}
+/* ANS-104 encoding. No dependency, arbitrary user tags only. */
+function avroLong(v){assert(Number.isSafeInteger(v)&&v>=0,'Avro length 无效');let x=BigInt(v)*2n;const a=[];while(x>127n){a.push(Number(x&127n)|128);x>>=7n;}a.push(Number(x));return Uint8Array.from(a);}
+function tagAvro(tags){const chunks=[avroLong(tags.length)];for(const {name,value} of tags){const n=bytes(name),v=bytes(value);assert(n.length>0&&v.length>0,'标签名和值都不能为空');chunks.push(avroLong(n.length),n,avroLong(v.length),v);}chunks.push(Uint8Array.of(0));return join(...chunks);}
+function le64(value){const a=new Uint8Array(8);let n=BigInt(value);for(let i=0;i<8;i++){a[i]=Number(n&255n);n>>=8n;}return a;}
+async function deepHash(chunk){if(Array.isArray(chunk)){let acc=await hash('SHA-384',bytes('list'+chunk.length));for(const item of chunk)acc=await hash('SHA-384',join(acc,await deepHash(item)));return acc;}
+  const b=chunk instanceof Uint8Array?chunk:new Uint8Array(chunk);
+  return hash('SHA-384',join(await hash('SHA-384',bytes('blob'+b.length)),await hash('SHA-384',b)));
+}
+function tagBounds(tags){assert(tags.length<=128,'ANS-104 最多支持 128 条标签（含协议标签）');for(const t of tags){const n=bytes(t.name).length,v=bytes(t.value).length;assert(n>0&&n<=1024,'标签名长度超出 ANS-104 限制');assert(v>0&&v<=3072,'标签值长度超出 ANS-104 限制');}assert(tagAvro(tags).length<=4096,'ANS-104 标签序列化总长度不能超过 4096 字节');}
+async function signDataItem(raw,tags,owner,key){tagBounds(tags);assert(owner.length===512,'ANS-104 Arweave Owner 长度错误');
+  const tagsBinary=tagAvro(tags);
+  // ar-io/arbundles deployed signature payload: dataitem, version, signature type,
+  // owner, target, anchor, raw serialized AVRO tag bytes, raw Metadata bytes.
+  // DO NOT hash nested [name,value] pairs or omit signature type (invalid Data Item).
+  const msg=await deepHash([bytes('dataitem'),bytes('1'),bytes('1'),owner,new Uint8Array(),new Uint8Array(),tagsBinary,raw]);
+  const signature=new Uint8Array(await crypto.subtle.sign({name:'RSA-PSS',saltLength:32},key,msg));
+  assert(signature.length===512,'RSA-PSS 输出非 512 字节');
+  const binary=join(Uint8Array.of(1,0),signature,owner,Uint8Array.of(0,0),le64(tags.length),le64(tagsBinary.length),tagsBinary,raw);
+  const id=b64url(await hash('SHA-256',signature));
+  return {id,binary,tags,signature};
+}
+async function uploadSignedDataItem(binary,id){
+  const url=endpoints().upload;let response;
+  try{response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:binary,signal:AbortSignal.timeout(65000)});}
+  catch(e){throw new Error(`Turbo 上传接口 ${url} 无法访问，接收状态未知。签名 ID：${id}。${e?.message||e}。请人工核验，不自动重试。`);}
+  // Turbo sometimes returns a plain-text rejection such as "Invalid Data Item!".
+  let raw;try{raw=await response.text();}catch{raw='';}
+  let obj;try{obj=JSON.parse(raw);}catch{obj=null;}
+  if(!response.ok){const message=(obj?JSON.stringify(obj):raw).slice(0,350);
+    throw new Error(`Turbo 拒绝上传（HTTP ${response.status}）：${message||'无响应正文'}。本地签名 ID：${id}；不要将其当作已发布交易。请人工核验。`);}
+  assert(TX_RE.test(obj?.id||''),`Turbo 返回 HTTP ${response.status}，但没有有效交易 ID；签名 ID：${id}。状态未确认，请人工核验。`);
+  assert(obj.id===id,`Turbo 返回 ID ${obj.id} 与本地签名 ID ${id} 不一致，请人工核验`);
+  return obj;
+}
+// 费用 API 只在开关开启时使用，不是上传接口的依赖。
+function feeEnabled(){return $('feeEnabled').checked;}
+function feeConfig(){
+  if(!feeEnabled())return Object.freeze({enabled:false});
+  return Object.freeze({enabled:true,priceTemplate:$('feePriceUrl').value.trim(),freeTemplate:$('feeFreeUrl').value.trim()});
+}
+function buildFeeUrl(template,placeholder,value,label){
+  assert(template&&template.includes('{'+placeholder+'}'),`${label}必须包含 {${placeholder}}`);
+  assert(template.split('{'+placeholder+'}').length===2,`${label}中的占位符只能出现一次`);
+  const substituted=template.replace('{'+placeholder+'}',encodeURIComponent(String(value)));
+  assert(!/[{}]/.test(substituted),`${label}含有不支持的占位符`);
+  let u;try{u=new URL(substituted);}catch{throw new Error(`${label}不是有效 URL`);}
+  assert(['https:','http:'].includes(u.protocol)&&u.hostname&&!u.username&&!u.password&&!u.hash,`${label}必须是无账户、无锚点的 HTTP(S) URL`);
+  return u.href;
+}
+function signedItemLength(raw,tags){tagBounds(tags);return 2+512+512+2+8+8+tagAvro(tags).length+raw.length;}
+function parseFreeBytes(value){
+  if(value===null)return null;
+  assert((typeof value==='number'&&Number.isSafeInteger(value)&&value>=0)||(typeof value==='string'&&/^(0|[1-9]\d*)$/.test(value)&&BigInt(value)<=BigInt(Number.MAX_SAFE_INTEGER)), '免费额度接口 bytesRemaining 无效');
+  return Number(value);
+}
+async function fetchFeeJson(url,label){
+  let res;try{res=await fetch(url,{method:'GET',signal:AbortSignal.timeout(15000)});}catch(e){throw networkFailure(label,url,e);}
+  assert(res.ok,`${label}返回 HTTP ${res.status}：${url}`);
+  try{return await res.json();}catch{throw new Error(`${label}返回非 JSON：${url}`);}
+}
+async function getFeeQuote(config,address,size){
+  assert(config.enabled,'费用查询已关闭');
+  assert(Number.isSafeInteger(size)&&size>0,'Data Item 大小无效');
+  const priceUrl=buildFeeUrl(config.priceTemplate,'byteCount',size,'报价 API');
+  const freeUrl=buildFeeUrl(config.freeTemplate,'walletAddress',address,'免费额度 API');
+  const [pricing,free]=await Promise.all([fetchFeeJson(priceUrl,'报价 API'),fetchFeeJson(freeUrl,'免费额度 API')]);
+  assert(typeof pricing?.winc==='string'&&/^(0|[1-9]\d*)$/.test(pricing.winc),'报价 API 未返回有效 winc 字符串');
+  const remaining=parseFreeBytes(free?.bytesRemaining);
+  // 105 KiB 只是公开文档中的单笔免费参考上限，实际免费资格以上传时服务端为准。
+  const likelyFree=size<=105*1024&&(remaining===null||remaining>=size);
+  return Object.freeze({size,winc:pricing.winc,remaining,likelyFree,priceUrl,freeUrl});
+}
+function feeSummary(q){return q.likelyFree?'预计符合免费条件（最终由 Turbo 确认）':`预计按报价收费 ${q.winc} winc（实际以回执为准）`;}
+function renderFee(box,q){box.replaceChildren();addPair(box,'完整签名 Data Item 大小',`${q.size} Bytes`);addPair(box,'Turbo 标价',`${q.winc} winc`);addPair(box,'钱包免费剩余额度',q.remaining===null?'无限额度（接口报告）':`${q.remaining} Bytes`);addPair(box,'费用判断',feeSummary(q));}
+function updateFeeVisibility(){ $('feeSettings').hidden=!feeEnabled(); }
+function lockPublishInputs(value){publishLocked=value;for(const id of PUBLISH_INPUTS)$(id).disabled=value;}
+function setBusy(yes){busy=yes;for(const id of ['btnPreview','btnPublish','btnFind','btnVerify','btnTestGateway',...ENDPOINT_FIELDS])$(id).disabled=yes;}
+
+function status(node,text,type='info'){const elem=$(node);elem.textContent=text;elem.className='status '+type;elem.hidden=false;}
+function clear(node){$(node).replaceChildren();}
+function addPair(el,name,value){const row=document.createElement('div');row.className='result-row';const a=document.createElement('span');a.textContent=name;const b=document.createElement('strong');b.textContent=String(value??'—');row.append(a,b);el.append(row);}
+function renderTxList(result){const list=$('findResults');list.replaceChildren();if(!result.items.length){const e=document.createElement('p');e.className='muted';e.textContent='当前查询未返回匹配交易。';list.append(e);}
+  for(const tx of result.items){const card=document.createElement('div');card.className='tx-card';const a=document.createElement('a');a.textContent=tx.id;a.href=dataUrl(tx.id);a.target='_blank';a.rel='noopener noreferrer';card.append(a);
+    addPair(card,'File-Id',val(tx.tags,'File-Id')[0]||'未提供');addPair(card,'Owner',tx.owner?.address||'未知');if(tx.block?.timestamp)addPair(card,'区块时间',new Date(tx.block.timestamp*1000).toISOString());list.append(card);}
+  const parts=[`返回 ${result.items.length} 条交易，可能包括历史版本或非 ArFS 数据。`];if(result.truncated)parts.push('超过显示上限：结果未完整列出。');if(result.unknown)parts.push(`${result.unknown} 条缺少有效区块时间，未计入。`);
+  status('findStatus',parts.join(' '),'ok');
+}
+function downloadJson(object,filename){const blob=new Blob([JSON.stringify(object,null,2)+'\n'],{type:'application/json'});const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function requirePrepared(){assert(prepared&&privateSigningKey&&signingAddress,'请先预检');assert(prepared.address===signingAddress,'钱包状态已改变，请重新预检');}
+async function preview(){
+  const revision=++previewRevision;
+  prepared=null;privateSigningKey=null;signingAddress=null;
+  $('publishPanel').hidden=true;$('confirmText').value='';clear('previewResults');clear('feeResults');
+  // 上次上传结果独立于本次预检，输入编辑不会抹掉已被 Turbo 接收的回执。
+  setBusy(true);status('previewStatus','正在读取来源、验证 Owner 与费用…');
+  try{
+    const selectedEndpoints=endpoints(),config=feeConfig();
+    const id=txId($('sourceId').value),walletFile=$('walletFile').files[0],wordText=$('keywords').value;
+    const words=normalizeKeywords(wordText);
+    const wallet=await loadKey(walletFile);
+    const tx=await byId(id),data=await readMetadata(id);
+    const info=validateSource(tx,data.json,wallet.address);
+    const tags=makeTags(tx.tags,words,Math.floor(Date.now()/1000));tagBounds(tags);
+    const size=signedItemLength(data.raw,tags);
+    const quote=config.enabled?await getFeeQuote(config,wallet.address,size):null;
+    const hashText=Array.from(await hash('SHA-256',data.raw),x=>x.toString(16).padStart(2,'0')).join('');
+    if(revision!==previewRevision)return;
+    // 只允许当前有效的预检建立可发布状态；对输入进行快照，用户编辑会使其失效。
+    const stable=Object.freeze({id,info:Object.freeze({...info}),tx,raw:data.raw.slice(),words:Object.freeze([...words]),address:wallet.address,owner:wallet.owner.slice(),hash:hashText,selectedEndpoints:Object.freeze({...selectedEndpoints}),config,quote,cryptoKey:wallet.cryptoKey});
+    prepared=stable;privateSigningKey=wallet.cryptoKey;signingAddress=wallet.address;
+    const box=$('previewResults');addPair(box,'文件名',info.name);addPair(box,'File-Id',info.fileId);addPair(box,'原 dataTxId',info.dataTxId);addPair(box,'来源 Metadata Tx ID',id);addPair(box,'Owner',wallet.address);
+    addPair(box,'GraphQL',selectedEndpoints.graphql);addPair(box,'Metadata 网关',selectedEndpoints.data);addPair(box,'Turbo 上传',selectedEndpoints.upload);addPair(box,'新标签',`7 条 ArFS 字段 + ${words.length} 条 key`);
+    addPair(box,'Metadata 正文',`原始 ${data.raw.length} 字节，保持不变`);addPair(box,'SHA-256',hashText);
+    const dropped=[...new Set(tx.tags.map(t=>t.name).filter(n=>!CORE.includes(n)&&n!=='Unix-Time'))];addPair(box,'本次不继承的旧标签',dropped.join('、')||'无');for(const word of words)addPair(box,'key',word);
+    if(quote)renderFee($('feeResults'),quote);else addPair($('feeResults'),'费用查询','已关闭；费用未知，发布前需人工确认');
+    $('publishPanel').hidden=false;
+    status('previewStatus','预检通过。尚未签名、未上传、未扣费。','ok');
+  }catch(e){if(revision===previewRevision)status('previewStatus',`预检未完成：${e.message}${feeEnabled()?'。若只有费用 API 不可达，可关闭费用查询后重新预检。':''}`,'error');}
+  finally{setBusy(false);}
+}
+async function publish(){
+  // 在第一个 await 之前取得发布快照并锁住输入，上传阶段永远不再读取可清空的 prepared。
+  if(publishLocked)return;
+  const snapshot=prepared;
+  lockPublishInputs(true);setBusy(true);
+  status('publishStatus','开始发布前核对…');
+  try{
+    assert(snapshot&&snapshot.cryptoKey&&snapshot.address===signingAddress,'请先预检');
+    assert(JSON.stringify(endpoints())===JSON.stringify(snapshot.selectedEndpoints),'网络端点已更改，请重新预检');
+    assert(JSON.stringify(feeConfig())===JSON.stringify(snapshot.config),'费用设置已更改，请重新预检');
+    assert(txId($('sourceId').value)===snapshot.id,'来源 ID 已变化，请重新预检');
+    assert(normalizeKeywords($('keywords').value).join('\n')===snapshot.words.join('\n'),'关键词已变化，请重新预检');
+    assert($('walletFile').files[0],'钱包已变化，请重新预检');
+    assert($('confirmText').value.trim()==='PUBLISH','必须输入 PUBLISH 才能发布');
+    if(!window.confirm('确定发布公开且不可撤销的新 Metadata？原文件正文不会重新上传；可能产生费用。')){status('publishStatus','已取消，没有发布。','info');return;}
+    const tags=makeTags(snapshot.tx.tags,snapshot.words,Math.floor(Date.now()/1000));
+    status('publishStatus','正在本地 RSA-PSS 签名…');
+    const signed=await signDataItem(snapshot.raw,tags,snapshot.owner,snapshot.cryptoKey);
+    let quote=null;
+    if(snapshot.config.enabled){
+      status('publishStatus','正在复核完整签名数据大小、费用报价与免费额度…');
+      quote=await getFeeQuote(snapshot.config,snapshot.address,signed.binary.length);
+      const previous=snapshot.quote;
+      const changed=quote.size!==previous.size||quote.winc!==previous.winc||quote.remaining!==previous.remaining||quote.likelyFree!==previous.likelyFree;
+      if(changed){
+        const message=`费用信息已变化。\n先前：${previous.winc} winc / 余额 ${previous.remaining??'无限'} 字节。\n现在：${quote.winc} winc / 余额 ${quote.remaining??'无限'} 字节。\n${feeSummary(quote)}。是否确认按最新信息发布？`;
+        if(!window.confirm(message)){status('publishStatus','费用变化，已取消发布，尚未提交 Turbo。','info');return;}
+      }
+    }else{
+      if(!window.confirm('费用查询已关闭：当前费用未知，实际上传可能扣费。是否仍然发布？')){status('publishStatus','已取消发布，尚未上传。','info');return;}
+    }
+    status('publishStatus',`本地签名完成，Tx ID：${signed.id}。正在向 Turbo 提交…`);
+    const receipt=await uploadSignedDataItem(signed.binary,signed.id);
+    // 收到有效 ID 时立即宣布接收成功，再做本地 UI 和回执处理。
+    status('publishStatus',`Turbo 已返回接收结果：${signed.id}。这不是主网确认。`,'ok');
+    try{
+      const outcome={metadataTxId:signed.id,sourceMetadataTxId:snapshot.id,fileId:snapshot.info.fileId,dataTxId:snapshot.info.dataTxId,owner:snapshot.address,keywords:[...snapshot.words],tagName:KEY,metadataBodySHA256:snapshot.hash,uploadedAt:new Date().toISOString(),feeQueryEnabled:snapshot.config.enabled,quotedWinc:quote?.winc??null,actualWinc:receipt.winc===undefined?null:String(receipt.winc),turboResponse:receipt};
+      const result=$('publishResults');result.replaceChildren();addPair(result,'Turbo 已返回接收 ID',receipt.id);addPair(result,'主网确认','尚未确认，请人工检查');
+      if(quote)addPair(result,'发布前报价',`${quote.winc} winc`);
+      addPair(result,'Turbo 回执报告费用',receipt.winc===undefined?'未提供':`${receipt.winc} winc`);
+      const a=document.createElement('a');a.href=snapshot.selectedEndpoints.data+'/'+signed.id;a.target='_blank';a.rel='noopener';a.textContent='查看交易';result.append(a);
+      $('btnReceipt').onclick=()=>{try{downloadJson(outcome,`metadata-${signed.id}.json`);}catch(e){status('publishStatus',`Turbo 已接收：${signed.id}；本地回执下载失败：${e.message}，请人工处理。`,'error');}};
+      $('btnReceipt').hidden=false;
+    }catch(e){status('publishStatus',`Turbo 已返回接收结果：${signed.id}；但结果界面处理失败：${e?.message||e}。请人工核验，不要直接重试。`,'error');}
+    prepared=null;privateSigningKey=null;signingAddress=null;$('publishPanel').hidden=true;$('walletFile').value='';
+  }catch(e){status('publishStatus',e.message,'error');}
+  finally{setBusy(false);lockPublishInputs(false);}
+}
+async function testGateway(){setBusy(true);status('endpointStatus','正在测试 GraphQL 连接…','info');
+  try{const url=endpoints().graphql;const d=await gql('query{transactions(first:1){edges{node{id}}}}');
+    assert(Array.isArray(d.transactions?.edges),'GraphQL 结构不符合预期');
+    status('endpointStatus',`GraphQL 连接成功：${url}；不代表 Turbo 上传已验收。`,'ok');
+  }catch(e){status('endpointStatus',e.message,'error');}finally{setBusy(false);}}
+async function search(){setBusy(true);status('findStatus','正在查询…');clear('findResults');
+  try{const limit=Number($('findLimit').value);const r=await findKey($('findWord').value,$('fromTime').value.trim(),$('toTime').value.trim(),limit);renderTxList(r);}catch(e){status('findStatus',e.message,'error');}finally{setBusy(false);}
+}
+async function verify(){setBusy(true);status('verifyStatus','正在查询…');clear('verifyResults');
+  try{const id=txId($('verifyId').value);const tx=await byId(id);const {json}=await readMetadata(id);
+    const box=$('verifyResults');addPair(box,'Metadata Tx ID',id);addPair(box,'区块高度',tx.block?.height??'未确认');addPair(box,'区块时间',tx.block?.timestamp?new Date(tx.block.timestamp*1000).toISOString():'未知');addPair(box,'File-Id',val(tx.tags,'File-Id')[0]||'未知');addPair(box,'dataTxId',json?.dataTxId||'未知');addPair(box,'文件名',json?.name||'未知');addPair(box,'Owner',tx.owner?.address||'未知');for(const k of val(tx.tags,KEY))addPair(box,'key',k);
+    status('verifyStatus','单个网关读取完成。不能据此判定长期持久性或签名完整性。','ok');
+  }catch(e){status('verifyStatus',e.message,'error');}finally{setBusy(false);}
+}
+function switchTab(tab){for(const id of ['update','find','verify']){const active=id===tab;$(id+'Tab').hidden=!active;const button=$('tab-'+id);button.setAttribute('aria-selected',String(active));button.classList.toggle('active',active);}}
+function wipePreview(){if(publishLocked)return;previewRevision++;prepared=null;privateSigningKey=null;signingAddress=null;$('publishPanel').hidden=true;$('confirmText').value='';clear('previewResults');clear('feeResults');status('previewStatus','输入改变。需要重新预检；上次发布结果不会清除。','info');}
+// 网址选择项只填入现有输入框；沿用原有端点变更处理（使旧预检失效）。
+for(const [presetId,inputId] of [['graphqlPreset','graphqlEndpoint'],['dataPreset','dataGateway'],['uploadPreset','uploadEndpoint']]){
+  const preset=$(presetId), input=$(inputId);
+  preset.addEventListener('change',()=>{
+    if(!preset.value)return;
+    input.value=preset.value;
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  input.addEventListener('input',()=>{if(input.value!==preset.value)preset.value='';});
+}
+$('btnTestGateway').addEventListener('click',testGateway);
+$('btnPreview').addEventListener('click',preview);
+$('btnPublish').addEventListener('click',publish);
+$('btnFind').addEventListener('click',search);
+$('btnVerify').addEventListener('click',verify);
+for(const name of ['sourceId','keywords'])$(name).addEventListener('input',wipePreview);
+$('walletFile').addEventListener('change',wipePreview);
+$('feeEnabled').addEventListener('change',()=>{updateFeeVisibility();wipePreview();});
+for(const id of ['feePriceUrl','feeFreeUrl'])$(id).addEventListener('input',wipePreview);
+for(const id of ENDPOINT_FIELDS)$(id).addEventListener('input',()=>{wipePreview();status('endpointStatus','端点已改变；更新前须重新预检。','info');});
+for(const id of ['update','find','verify'])$('tab-'+id).addEventListener('click',()=>switchTab(id));
+$('btnReceipt').hidden=true;
+updateFeeVisibility();
+
+</script>
+</body>
+</html>
